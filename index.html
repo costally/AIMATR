@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marathon AI Coach v3.8</title>
+    <title>Marathon AI Coach v3.8.1</title>
     <style>
         :root {
             --primary: #007AFF;
@@ -206,7 +206,7 @@
     <div class="container">
         <!-- HEADER -->
         <header>
-            <span class="badge">AI COACH v3.8</span>
+            <span class="badge">AI COACH v3.8.1</span>
             <h1>Marathon Planner</h1>
             <p class="subtitle" id="pageSubtitle">나만의 맞춤형 훈련 프로그램 설정</p>
         </header>
@@ -229,8 +229,7 @@
                     </div>
                     <label style="margin-top:25px;">훈련 기간 선택</label>
                     <div class="preset-group"><button type="button" class="preset-btn" id="btn8" onclick="selectPreset(8, this)">8주</button><button type="button" class="preset-btn active" id="btn12" onclick="selectPreset(12, this)">12주</button><button type="button" class="preset-btn" id="btn16" onclick="selectPreset(16, this)">16주</button><button type="button" class="preset-btn" id="btnAuto" onclick="selectPreset('auto', this)">대회일까지</button></div>
-                    
-                    <div class="row" style="margin-bottom: 15px;">
+                    <div class="row" style="margin-bottom: 25px;">
                         <div class="col"><label>훈련 시작일 (Start)</label><input type="date" id="startDate" onchange="updateAll()"></div>
                         <div class="col"><label>대회 날짜 (Race)</label><input type="date" id="raceDate" onchange="enableCustomMode()"></div>
                     </div>
@@ -336,13 +335,11 @@
 
     <script>
         let currentTrainingWeeks = 12; let userPaces = {}; let userFreq = 4; let globalTargetDist = 42.195; let currentViewWeek = 1;
-        let globalStartDate = new Date(); // Global Start Date
+        let globalStartDate = new Date(); 
 
         window.onload = function() { 
             initTimeSelects(); 
-            // Set Start Date to Today by default
             document.getElementById('startDate').valueAsDate = new Date();
-            // Set Race Date to 3 months later
             const rd = new Date(); rd.setMonth(rd.getMonth()+3); 
             document.getElementById('raceDate').valueAsDate = rd;
             
@@ -350,6 +347,7 @@
             updateAll(); 
         }
 
+        // ... (initTimeSelects, updateAll, getInputs, calculateRecommendation, updateRecommendationBadge, updateFeedbackBox, selectPreset, enableCustomMode, formatPace, secondsToTime same as v3.8) ...
         function initTimeSelects() {
             const createOpts = (el, max) => { for(let i=0; i<=max; i++) el.add(new Option(i, i)); };
             createOpts(document.getElementById('curH'), 9); createOpts(document.getElementById('curM'), 59); createOpts(document.getElementById('curS'), 59); document.getElementById('curM').value = 37;
@@ -396,21 +394,19 @@
         function selectPreset(w,b){
             document.querySelectorAll('.preset-btn').forEach(x=>x.classList.remove('active')); if(b)b.classList.add('active');
             
-            // Start Date logic
             const sVal = document.getElementById('startDate').value;
             const startD = sVal ? new Date(sVal) : new Date();
 
             if(w==='auto'){
                 const v=document.getElementById('raceDate').value;
                 if(!v){
-                    // Default if no race date: 3 months from start
                     const d=new Date(startD); d.setMonth(d.getMonth()+3); 
                     document.getElementById('raceDate').valueAsDate=d; 
                     currentTrainingWeeks=12;
                 } else {
                     const raceD = new Date(v);
                     const diff=Math.ceil((raceD - startD)/(86400000));
-                    currentTrainingWeeks=Math.max(4, Math.floor(diff/7)); // Min 4 weeks
+                    currentTrainingWeeks=Math.max(4, Math.floor(diff/7)); 
                 }
             } else {
                 currentTrainingWeeks=w; 
@@ -462,10 +458,8 @@
 
             const sVal = document.getElementById('startDate').value;
             globalStartDate = sVal ? new Date(sVal) : new Date();
-            
             const rVal = document.getElementById('raceDate').value;
             const raceD = rVal ? new Date(rVal) : new Date();
-            
             const diffDays = Math.ceil((raceD - globalStartDate)/86400000);
             
             if(diffDays <= 0) { alert("대회 날짜는 시작일 이후여야 합니다."); return; }
@@ -534,22 +528,17 @@
             const grid=document.getElementById('dailyGrid'); grid.innerHTML="";
             const phase=getPhaseName(wNum,currentTrainingWeeks);
             
-            // Calculate Start Date of this week
             const startDay = new Date(globalStartDate); 
             startDay.setDate(globalStartDate.getDate() + (wNum-1)*7);
             
-            const days=['일','월','화','수','목','금','토']; // Index doesn't matter much as we use Date object
-            
-            // Get Plan Array (Rotated based on Requirement: Day 1 = Easy)
+            const days=['일','월','화','수','목','금','토'];
             const plans=getWeeklyPlan(wNum,phase,userFreq,globalTargetDist);
             
             plans.forEach((p,i)=>{
                 const d=new Date(startDay); d.setDate(startDay.getDate()+i);
-                // day name from date
                 const dayName = days[d.getDay()]; 
                 const dStr=`${d.getMonth()+1}.${d.getDate()} (${dayName})`;
                 
-                // Today Check
                 const today = new Date();
                 const isToday = (d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear());
 
@@ -572,27 +561,21 @@
             document.getElementById('dWhy').innerText=p.why; document.getElementById('dHow').innerHTML=p.how; document.getElementById('dCaution').innerText=p.caution;
         }
 
-        // --- NEW LOGIC: Dynamic Schedule starting with Easy Run ---
+        // --- UPDATED LOGIC: Detailed HOW sections for Beginners ---
         function getWeeklyPlan(week, phase, freq, distType) {
             const isFull = distType > 30; const isHalf = distType > 15 && distType < 30;
             
-            // Standard Order: Easy -> Cross -> Speed -> Rest -> Long -> Recovery -> Rest
-            // This ensures Day 1 (Start Date) is always Easy Run.
-            
             let p = [
-                { type: 'Easy', title: 'Easy Run', icon: '🏃‍♂️' },      // Day 1
-                { type: 'Wed', title: '보강/Easy', icon: '🧘' },      // Day 2
-                { type: 'Speed', title: 'Point Run', icon: '⚡' },    // Day 3
-                { type: 'Rest', title: '휴식', icon: '🛌' },          // Day 4
-                { type: 'Long', title: 'LSD', icon: '🏔️' },          // Day 5
-                { type: 'Recovery', title: 'Recovery', icon: '🩹' },  // Day 6
-                { type: 'Rest', title: '휴식', icon: '🛌' }           // Day 7
+                { type: 'Easy', title: 'Easy Run', icon: '🏃‍♂️' },
+                { type: 'Wed', title: '보강/Easy', icon: '🧘' },
+                { type: 'Speed', title: 'Point Run', icon: '⚡' },
+                { type: 'Rest', title: '휴식', icon: '🛌' },
+                { type: 'Long', title: 'LSD', icon: '🏔️' },
+                { type: 'Recovery', title: 'Recovery', icon: '🩹' },
+                { type: 'Rest', title: '휴식', icon: '🛌' }
             ];
             
-            // Freq Adjust (Removing sessions for lower freq)
             if(freq === 3) { 
-                // Keep: Easy, Speed, Long. Remove: Cross, Recovery. 
-                // New 3-day pattern on 7 day grid: Easy, Rest, Speed, Rest, Long, Rest, Rest
                 p = [
                     { type: 'Easy', title: 'Easy Run', icon: '🏃‍♂️' },
                     { type: 'Rest', title: '휴식', icon: '🛌' },
@@ -604,7 +587,6 @@
                 ];
             }
             else if(freq >= 5) { 
-                // Day 2 becomes Steady Run instead of Cross/Easy
                 p[1] = {type:'Medium',title:'Steady Run',icon:'🐎'}; 
             }
 
@@ -613,62 +595,114 @@
             else if(phase === 'Build') speedType = 'Tempo';
             else if(phase === 'Peak') speedType = 'Interval'; 
             else speedType = 'TaperPace';
-
-            // Find the Speed slot (It's index 2 in standard, index 2 in freq3)
-            // But let's check type to be safe or rely on index.
-            // In standard array (freq4/5), Speed is index 2.
-            // In freq3 array, Speed is index 2.
-            // So p[2] is always Speed slot in this new arrangement? No wait.
-            // Std: Easy, Cross, Speed (Index 2)
-            // Freq3: Easy, Rest, Speed (Index 2)
             
-            p.forEach(item => {
-                if(item.type === 'Speed') item.type = speedType;
-            });
+            // Assign Speed Type
+            p.forEach(item => { if(item.type === 'Speed') item.type = speedType; });
 
             return p.map(d => {
                 let desc="", tag="", why="", how="", caution="";
                 
-                if(d.type === 'Rest') { desc="완전 휴식"; tag="Recovery"; why="회복"; how="<ul><li>수면 보충</li></ul>"; caution="운동 금지"; }
-                else if(d.type === 'Easy') { desc=`조깅 40-50분 @ ${userPaces.easy}`; tag="Zone 2"; why="유산소 베이스"; how="<ul><li>편안하게</li></ul>"; caution="오버페이스 금지"; }
-                else if(d.type === 'Wed') { desc="보강운동 30분"; tag="Cross"; why="코어 강화"; how="<ul><li>스쿼트, 플랭크</li></ul>"; caution="무리 금지"; }
-                else if(d.type === 'Medium') { desc=`지속주 60분 @ ${userPaces.steady}`; tag="Aerobic"; why="지구력"; how="<ul><li>일정한 페이스 유지</li></ul>"; caution="자세 집중"; }
-                
-                else if(d.type === 'Fartlek') { // Base Phase
-                    d.title = "Fartlek"; d.icon = "💨"; desc = "변속주 40분"; tag = "Zone 3"; 
-                    why = "스피드 적응 및 심박수 자극"; 
-                    how = `<ul><li><strong>워밍업:</strong> 15분 조깅</li><li><strong>본운동:</strong> (3분 조깅 + 2분 빠르게) x 6회 반복. 지형지물을 이용하세요.</li><li><strong>쿨다운:</strong> 10분 조깅</li></ul>`; 
-                    caution = "빠르게 달릴 때 자세가 무너지지 않게 주의하세요.";
+                if(d.type === 'Rest') { 
+                    desc="완전 휴식"; tag="Recovery"; 
+                    why="근육 회복 및 성장 (초과보상)"; 
+                    how=`<ul><li>아무 운동도 하지 않고 쉽니다.</li><li>수면 시간을 평소보다 30분~1시간 늘리세요.</li><li>가벼운 스트레칭이나 폼롤러 마사지는 좋습니다.</li></ul>`; 
+                    caution="죄책감 갖지 말고 푹 쉬세요."; 
                 }
-                else if(d.type === 'Tempo') { // Build Phase
+                else if(d.type === 'Easy') { 
+                    let dkm = isFull ? (phase==='Peak'?'10km':'8km') : '6km';
+                    desc=`조깅 ${dkm} @ ${userPaces.easy}`; tag="Zone 2"; 
+                    why="유산소 기초 체력 향상 (부상 없이 거리 늘리기)"; 
+                    how=`<ul>
+                            <li><strong>워밍업:</strong> 5분 빠르게 걷기</li>
+                            <li><strong>본운동:</strong> ${dkm}를 <strong>${userPaces.easy}</strong> 페이스로 달립니다.<br>옆 사람과 편안하게 대화할 수 있는 속도여야 합니다.</li>
+                            <li><strong>쿨다운:</strong> 5분 천천히 걷기</li>
+                        </ul>`; 
+                    caution="숨이 차면 페이스를 더 늦추세요. 걷는 것보다 아주 조금 빠른 정도도 괜찮습니다."; 
+                }
+                else if(d.type === 'Wed') { 
+                    desc="보강운동 30분 or 조깅 5km"; tag="Cross"; 
+                    why="러닝에 필요한 코어 근육 강화 및 부상 방지"; 
+                    how=`<ul>
+                            <li><strong>옵션 A (근력):</strong> 스쿼트 15회x3세트, 런지 10회x3세트, 플랭크 30초x3세트</li>
+                            <li><strong>옵션 B (러닝):</strong> 몸이 가볍다면 <strong>${userPaces.easy}</strong>보다 더 느리게 5km 조깅</li>
+                        </ul>`; 
+                    caution="근육통이 심하면 옵션 A, B 모두 건너뛰고 쉬세요."; 
+                }
+                else if(d.type === 'Medium') { 
+                    let dkm = isFull ? (phase==='Peak'?'15km':'12km') : '10km';
+                    desc=`지속주 ${dkm} @ ${userPaces.steady}`; tag="Aerobic"; 
+                    why="중상급자를 위한 지구력 강화"; 
+                    how=`<ul>
+                            <li><strong>워밍업:</strong> 1km 아주 느린 조깅</li>
+                            <li><strong>본운동:</strong> ${dkm}를 <strong>${userPaces.steady}</strong> 페이스로 일정하게 밉니다.<br>조깅보다는 빠르고 헉헉거릴 정도는 아닌 '묵직한' 느낌입니다.</li>
+                            <li><strong>쿨다운:</strong> 1km 걷기</li>
+                        </ul>`; 
+                    caution="초반에 너무 빨리 달리지 않도록 주의하세요."; 
+                }
+                else if(d.type === 'Fartlek') { 
+                    d.title = "Fartlek"; d.icon = "💨"; desc = "변속주 40분"; tag = "Zone 3"; 
+                    why="스피드에 대한 두려움을 없애고 심폐기능 자극"; 
+                    how=`<ul>
+                            <li><strong>워밍업:</strong> 10분 아주 천천히 조깅</li>
+                            <li><strong>본운동 (6세트):</strong><br> - 2분 빠르게 (대화 불가능, 숨이 참)<br> - 3분 느리게 (호흡 정리하며 천천히 조깅)</li>
+                            <li><strong>쿨다운:</strong> 10분 아주 천천히 조깅</li>
+                        </ul>`; 
+                    caution="빠르게 달릴 때 전력질주(100%)가 아닙니다. 80~90% 힘으로 달리세요."; 
+                }
+                else if(d.type === 'Tempo') { 
                     d.title = "Threshold"; d.icon = "🔥"; 
                     let dist = isFull? (week%2==0?'10km':'12km') : '8km';
                     desc = `템포런 ${dist} @ ${userPaces.threshold}`; tag = "Zone 4";
-                    why = "젖산 역치 향상 (스피드 지구력)";
-                    how = `<ul><li><strong>워밍업:</strong> 3km 조깅 + 질주 3회</li><li><strong>본운동:</strong> ${dist}를 <strong>${userPaces.threshold}</strong> 페이스로 유지. (힘들지만 버틸 수 있는 강도)</li><li><strong>쿨다운:</strong> 2km 조깅</li></ul>`;
-                    caution = "페이스가 쳐지지 않게 집중하세요.";
+                    why="젖산 역치(지치지 않는 한계 속도) 향상";
+                    how=`<ul>
+                            <li><strong>워밍업:</strong> 3km 조깅 + 짧은 질주 3회</li>
+                            <li><strong>본운동:</strong> ${dist}를 <strong>${userPaces.threshold}</strong> 페이스로 꾸준히 유지합니다.<br>'힘들지만 30분은 버틸 수 있다'는 느낌입니다.</li>
+                            <li><strong>쿨다운:</strong> 2km 아주 느린 조깅</li>
+                        </ul>`;
+                    caution="페이스가 들쭉날쭉하면 효과가 없습니다. 시계를 자주 확인하세요.";
                 }
-                else if(d.type === 'Interval') { // Peak Phase
+                else if(d.type === 'Interval') { 
                     d.title = "Interval"; d.icon = "⚡"; 
-                    desc = "1000m 인터벌 x 5~7회"; tag = "Zone 5";
-                    why = "최대 산소 섭취량(VO2max) 극대화";
-                    how = `<ul><li><strong>워밍업:</strong> 3km 조깅 + 동적 스트레칭</li><li><strong>본운동:</strong> 1000m를 <strong>${userPaces.interval}</strong>로 질주 + 400m 회복 조깅. 이를 5~7세트 반복.</li><li><strong>쿨다운:</strong> 3km 조깅</li></ul>`;
-                    caution = "심박수가 90~95%까지 올라가야 합니다. 가장 고통스러운 훈련입니다.";
+                    desc = "1km 인터벌 x 5회"; tag = "Zone 5";
+                    why="최대 산소 섭취량(VO2max) 극대화 (엔진 업그레이드)";
+                    how=`<ul>
+                            <li><strong>워밍업:</strong> 3km 조깅 + 스트레칭 꼼꼼히</li>
+                            <li><strong>본운동 (5세트):</strong><br> - 1km <strong>${userPaces.interval}</strong>로 질주 (매우 힘듦)<br> - 3분간 걷거나 아주 느리게 뛰며 휴식</li>
+                            <li><strong>쿨다운:</strong> 3km 아주 느린 조깅</li>
+                        </ul>`;
+                    caution="목표 페이스를 달성하지 못하면 휴식 시간을 늘리세요.";
                 }
-                else if(d.type === 'TaperPace') { // Taper Phase
+                else if(d.type === 'TaperPace') { 
                     d.title = "Marathon Pace"; d.icon = "🎯"; 
-                    desc = `대회 페이스 점검 8km @ ${userPaces.marathon}`; tag = "Race Pace";
-                    why = "실전 감각 조율";
-                    how = `<ul><li><strong>워밍업:</strong> 2km</li><li><strong>본운동:</strong> 8km를 정확히 대회 목표 페이스(${userPaces.marathon})로 주행</li><li><strong>쿨다운:</strong> 2km</li></ul>`;
-                    caution = "너무 많이 뛰지 마세요. 에너지를 비축해야 합니다.";
+                    desc = `대회 페이스 ${isFull?'8km':'5km'} @ ${userPaces.marathon}`; tag = "Race Pace";
+                    why="대회 당일 감각 익히기 (페이스 조절 연습)";
+                    how=`<ul>
+                            <li><strong>워밍업:</strong> 2km 조깅</li>
+                            <li><strong>본운동:</strong> 목표 대회 페이스(<strong>${userPaces.marathon}</strong>)로 정확하게 달립니다.<br>너무 빠르지도, 느리지도 않게 제어하세요.</li>
+                            <li><strong>쿨다운:</strong> 1km 걷기</li>
+                        </ul>`;
+                    caution="컨디션이 좋다고 더 빨리, 더 많이 뛰면 안 됩니다.";
                 }
-
                 else if(d.type === 'Long') {
-                    let lDist = isFull ? (phase==='Base'?'20km':(phase==='Build'?'26km':(phase==='Peak'?'32km':'12km'))) : '15km';
-                    desc = `LSD ${lDist}`; tag = "Endurance"; why="지구력"; how=`<ul><li>천천히(${userPaces.easy}) 길게</li></ul>`; caution="급수 필수";
+                    let lDist = isFull ? (phase==='Base'?'20km':(phase==='Build'?'26km':(phase==='Peak'?'32km':'15km'))) : '15km';
+                    desc = `LSD ${lDist}`; tag = "Endurance"; 
+                    why="지방을 에너지로 쓰는 능력 배양 & 정신력 강화"; 
+                    how=`<ul>
+                            <li><strong>준비물:</strong> 물, 에너지젤 2~3개</li>
+                            <li><strong>본운동:</strong> <strong>${userPaces.easy}</strong> 페이스로 ${lDist} 완주가 목표입니다.</li>
+                            <li>속도보다 '멈추지 않고 계속 달리는 것'이 중요합니다.</li>
+                        </ul>`; 
+                    caution="중간에 힘들면 걷지 말고 아주 느리게 뛰세요 (제자리 뛰기 수준이라도 OK)."; 
                 }
                 else if(d.type === 'Recovery') {
-                    desc = "회복러닝 30분"; tag="Zone 1"; why="피로 회복"; how=`<ul><li>아주 천천히(${userPaces.recovery})</li></ul>`; caution="산책하듯";
+                    desc = `회복 조깅 5km @ ${userPaces.recovery}`; tag = "Zone 1"; 
+                    why="혈액 순환을 통해 근육 피로 물질 제거"; 
+                    how=`<ul>
+                            <li><strong>방법:</strong> <strong>${userPaces.recovery}</strong> 페이스로 아주 가볍게 뜁니다.</li>
+                            <li>옆 사람과 노래를 부를 수 있을 정도로 편해야 합니다.</li>
+                            <li>절대 숨이 차면 안 됩니다.</li>
+                        </ul>`; 
+                    caution="이 훈련을 빠르게 하면 부상이 옵니다. 느림의 미학을 즐기세요."; 
                 }
 
                 return { ...d, desc, tag, why, how, caution };
