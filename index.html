@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marathon AI Coach v4.0</title>
+    <title>Marathon AI Coach v4.2.1 - AIMATR Prototype</title>
+    <!-- Chart.js for Dashboard -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #007AFF;
@@ -24,7 +26,8 @@
         }
 
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--bg); color: var(--text-main); margin: 0; padding: 20px; display: flex; justify-content: center; min-height: 100vh; }
-        .container { width: 100%; max-width: 800px; background-color: var(--card); border-radius: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.12); padding: 30px; box-sizing: border-box; position: relative; overflow: hidden; min-height: 1100px; }
+        .container { width: 100%; max-width: 800px; background-color: var(--card); border-radius: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.12); padding: 30px; box-sizing: border-box; position: relative; overflow: hidden; min-height: 1300px; }
+        
         .fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .hidden { display: none !important; }
@@ -34,6 +37,11 @@
         h1 { margin: 12px 0 6px 0; font-size: 2rem; letter-spacing: -0.5px; color: #000; }
         .subtitle { font-size: 1rem; color: var(--text-sub); margin: 0; }
 
+        /* Navigation Tabs */
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+        .nav-tab { flex: 1; min-width: 80px; padding: 10px; border: none; background: #f2f2f7; border-radius: 12px; font-weight: 700; color: #888; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+        .nav-tab.active { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(0,122,255,0.3); }
+
         /* Form Styles */
         .form-section { margin-bottom: 30px; border-bottom: 2px solid #f2f2f7; padding-bottom: 25px; }
         .form-section:last-of-type { border-bottom: none; }
@@ -41,8 +49,10 @@
         .row { display: flex; gap: 15px; }
         .col { flex: 1; }
         label { display: block; margin-bottom: 8px; font-weight: 700; font-size: 0.95rem; color: #333; }
-        select, input[type="date"] { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 1.05rem; font-weight: 500; background: #fff; box-sizing: border-box; -webkit-appearance: none; transition: 0.2s; color: #000; }
+        select, input, .preset-btn { font-family: inherit; }
+        select, input[type="date"], input[type="number"] { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 1.05rem; font-weight: 500; background: #fff; box-sizing: border-box; -webkit-appearance: none; transition: 0.2s; color: #000; }
         select:focus, input:focus { outline: none; border-color: var(--primary); background-color: #F8FBFF; }
+
         .time-picker-group { display: flex; gap: 8px; align-items: center; }
         .time-select-wrapper { flex: 1; position: relative; }
         .time-select-wrapper select { text-align: center; padding-right: 25px; font-weight: 600; }
@@ -52,6 +62,7 @@
         .preset-btn { flex: 1; padding: 14px 5px; border: 2px solid #e0e0e0; background: white; border-radius: 12px; font-size: 0.9rem; font-weight: 700; color: #555; cursor: pointer; transition: 0.2s; line-height: 1.3; position: relative; }
         .preset-btn.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(0,122,255,0.2); }
         .preset-btn:hover:not(.active) { background: #f2f2f7; border-color: #ccc; }
+        /* Badge Style */
         .rec-badge { position: absolute; top: -12px; right: -8px; background: #FF3B30; color: white; font-size: 0.7rem; padding: 4px 8px; border-radius: 20px; display: none; font-weight: 800; box-shadow: 0 3px 6px rgba(0,0,0,0.15); border: 2px solid #fff; animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; }
         @keyframes bounceIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); } }
 
@@ -60,12 +71,6 @@
         .feedback-box.challenge { background: #fff8e6; border-left-color: var(--warning); color: #7a4f01; }
         .feedback-box.danger { background: #feebeb; border-left-color: var(--danger); color: #c90a00; }
         .rec-time-display { font-size: 1.2rem; font-weight: 800; color: var(--primary-dark); margin-top: 5px; }
-
-        .science-info { background-color: var(--info-bg); padding: 20px; border-radius: 14px; margin-top: 30px; font-size: 0.9rem; color: #444; line-height: 1.6; border: 1px solid #D1D5DB; }
-        .science-info strong { color: #1c1c1e; font-weight: 800; display: block; margin-bottom: 8px; font-size: 0.95rem; }
-        .science-info ul { margin: 5px 0 0 0; padding-left: 20px; }
-        .science-info li { margin-bottom: 5px; }
-        .fact-icon { margin-right: 6px; }
 
         button.cta { width: 100%; background-color: var(--primary); color: white; padding: 18px; border: none; border-radius: 16px; font-size: 1.15rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 6px 15px rgba(0,122,255,0.3); margin-top: 10px; }
         button.cta:hover { background-color: var(--primary-dark); transform: translateY(-2px); }
@@ -79,38 +84,35 @@
         .summary-info-row { display: flex; justify-content: center; gap: 20px; margin-top: 20px; color: #444; font-size: 0.95rem; font-weight: 500; }
         .pace-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-bottom: 35px; }
         .pace-card { background: white; padding: 15px; border-radius: 14px; border: 2px solid #e5e5ea; position: relative; text-align: center; transition: 0.3s; }
-        .pace-card.highlight { border-color: var(--primary); box-shadow: 0 0 15px rgba(0,122,255,0.2); } /* 페이스 변경시 강조 */
         .pace-label { font-size: 0.8rem; color: #777; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .pace-value { font-size: 1.1rem; font-weight: 800; color: #1c1c1e; }
         .dot { width: 8px; height: 8px; border-radius: 50%; }
 
-        .guide-list { margin-top: 30px; margin-bottom: 30px; }
-        .guide-item { margin-bottom: 12px; background: white; border: 2px solid #E5E5EA; border-radius: 14px; padding: 15px; display: flex; flex-direction: column; }
-        .guide-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-        .guide-title { font-weight: 800; font-size: 1.05rem; color: #222; }
-        .guide-desc { font-size: 0.9rem; color: #555; line-height: 1.5; }
-        .guide-tag { font-size: 0.75rem; padding: 3px 8px; border-radius: 6px; background: #F2F2F7; color: #555; font-weight: 700; margin-left: auto; }
-
         /* Daily Schedule UI */
-        .daily-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .week-nav { display: flex; justify-content: space-between; align-items: center; background: #fff; border: 2px solid #E5E5EA; border-radius: 18px; padding: 15px 20px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+        .nav-btn { background: white; border: 2px solid #E5E5EA; width: 44px; height: 44px; border-radius: 12px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 1.2rem; color: #555; transition: 0.2s; }
+        .nav-btn:hover { background: var(--primary); border-color: var(--primary); color: white; }
+        .week-title { font-size: 1.4rem; font-weight: 900; display: block; margin-bottom: 4px; color: #222; }
+        .week-phase { font-size: 0.9rem; color: #666; font-weight: 700; background: #F2F2F7; padding: 4px 12px; border-radius: 20px; }
+
+        .daily-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .day-card { background: white; border: 2px solid #E5E5EA; border-radius: 18px; padding: 15px; position: relative; transition: all 0.2s; cursor: pointer; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
         .day-card.type-Rest { border-top: 6px solid #8e8e93; }
         .day-card.type-Easy { border-top: 6px solid var(--success); }
-        .day-card.type-Speed { border-top: 6px solid var(--danger); }
-        .day-card.type-Tempo { border-top: 6px solid var(--warning); }
+        .day-card.type-Speed, .day-card.type-Interval { border-top: 6px solid var(--danger); }
+        .day-card.type-Tempo, .day-card.type-Threshold { border-top: 6px solid var(--warning); }
         .day-card.type-Fartlek { border-top: 6px solid var(--fartlek); }
-        .day-card.type-Long { border-top: 6px solid #333; }
-        .day-card.type-Medium { border-top: 6px solid var(--steady); }
+        .day-card.type-Long, .day-card.type-LSD { border-top: 6px solid #333; }
+        .day-card.type-Medium, .day-card.type-Steady { border-top: 6px solid var(--steady); }
         .day-card.type-Recovery { border-top: 6px solid var(--info); }
         .day-card.type-Wed { border-top: 6px solid var(--cross); }
 
         .day-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); border-color: #ccc; }
         .day-card.active { border: 3px solid var(--primary); background-color: #F4F9FF; transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,122,255,0.2); z-index: 10; }
-        
-        /* Completed State */
+        .day-card.today { background-color: #fff; } 
         .day-card.completed { opacity: 0.6; background-color: #f9f9f9; border-color: #ddd; transform: none; }
         .day-card.completed::before { content: '✅'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; opacity: 0.3; z-index: 0; }
-        
+
         .day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .day-date { font-size: 0.9rem; color: #666; font-weight: 700; }
         .day-badge { font-size: 0.65rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; background: #eee; color: #555; text-transform: uppercase; }
@@ -120,8 +122,20 @@
         .day-title { font-size: 1.1rem; font-weight: 800; color: #222; margin-bottom: 6px; text-align: center; letter-spacing: -0.5px; }
         .day-desc { font-size: 0.85rem; color: #555; text-align: center; line-height: 1.4; height: 36px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 500; }
 
+        /* Checkbox Style */
+        .check-circle {
+            position: absolute; top: 15px; right: 15px; width: 24px; height: 24px;
+            border: 2px solid #ddd; border-radius: 50%; background: white;
+            display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; z-index: 20;
+        }
+        .check-circle:hover { border-color: var(--primary); transform: scale(1.1); }
+        .check-circle.checked { background: var(--success); border-color: var(--success); color: white; }
+        .check-circle::after { content: '✔'; font-size: 14px; display: none; }
+        .check-circle.checked::after { display: block; }
+
         /* Detail Box */
-        .detail-box { background: white; border: 2px solid #E5E5EA; border-radius: 20px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); animation: slideUp 0.3s ease-out; }
+        .detail-box { background: white; border: 2px solid #E5E5EA; border-radius: 20px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); animation: slideUp 0.3s ease-out; margin-bottom: 30px; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .detail-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
         .detail-icon-box { width: 60px; height: 60px; background: #F2F2F7; border-radius: 16px; display: flex; justify-content: center; align-items: center; font-size: 2rem; }
         .detail-title-group h3 { margin: 0 0 5px 0; font-size: 1.6rem; color: #111; }
@@ -132,129 +146,156 @@
         .info-text { font-size: 1rem; color: #333; line-height: 1.7; }
         .caution-box { background: #FFF0F0; border-left: 5px solid var(--danger); padding: 20px; border-radius: 14px; }
         .caution-label { color: var(--danger); font-weight: 900; font-size: 0.9rem; margin-bottom: 5px; display: block; }
-        
-        /* Complete Button in Detail */
         .complete-btn { width: 100%; background: #34C759; color: white; padding: 15px; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 800; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); transition: 0.2s; }
         .complete-btn:hover { background: #28a745; transform: scale(1.02); }
         .complete-btn.disabled { background: #ccc; cursor: default; box-shadow: none; transform: none; }
 
-        /* Modal Styles */
+        /* Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px); }
         .modal-content { background: white; width: 90%; max-width: 400px; padding: 30px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align: center; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-        .rpe-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 20px 0; }
-        .rpe-btn { background: #f2f2f7; border: 2px solid transparent; border-radius: 12px; padding: 10px 5px; cursor: pointer; transition: 0.2s; }
+        .rpe-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin: 20px 0; }
+        .rpe-btn { background: #f2f2f7; border: 2px solid transparent; border-radius: 12px; padding: 10px 2px; cursor: pointer; transition: 0.2s; display:flex; flex-direction:column; align-items:center; }
         .rpe-btn:hover { background: #e0e0e0; }
         .rpe-btn.selected { border-color: var(--primary); background: #F0F7FF; transform: translateY(-3px); }
-        .rpe-emoji { font-size: 2rem; display: block; margin-bottom: 5px; }
-        .rpe-label { font-size: 0.7rem; font-weight: 700; color: #555; }
+        .rpe-emoji { font-size: 1.8rem; margin-bottom: 5px; }
+        .rpe-label { font-size: 0.6rem; font-weight: 700; color: #555; }
+
+        /* Dashboard */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .chart-box { background: white; border: 2px solid #E5E5EA; border-radius: 18px; padding: 20px; height: 300px; }
+        .kpi-card { background: #F2F2F7; border-radius: 16px; padding: 15px; text-align: center; }
+        .kpi-val { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+        .kpi-lbl { font-size: 0.8rem; color: #666; font-weight: 600; }
+
+        /* Race Strategy */
+        .strategy-box { background: #fff; border: 2px solid #E5E5EA; border-radius: 18px; padding: 20px; margin-bottom: 20px; }
+        .split-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .split-table th { text-align: left; border-bottom: 2px solid #eee; padding: 10px; color: #888; }
+        .split-table td { padding: 12px 10px; border-bottom: 1px solid #f9f9f9; font-weight: 600; }
+        .gel-point { color: var(--warning); font-weight: 800; font-size: 0.8rem; background: #FFF8E1; padding: 2px 6px; border-radius: 4px; }
 
         /* Toast */
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 50px; font-size: 0.9rem; font-weight: 600; box-shadow: 0 10px 20px rgba(0,0,0,0.2); opacity: 0; transition: 0.3s; z-index: 2000; pointer-events: none; }
         .toast.show { opacity: 1; bottom: 40px; }
-
     </style>
 </head>
 <body>
 
     <div class="container">
-        <!-- HEADER -->
         <header>
-            <span class="badge">AI COACH v4.0</span>
-            <h1>Marathon Planner</h1>
-            <p class="subtitle" id="pageSubtitle">나만의 맞춤형 훈련 프로그램 설정</p>
+            <span class="badge">AIMATR PRO v4.2.1</span>
+            <h1>Marathon AI Coach</h1>
+            <p class="subtitle">Data-Driven Adaptive Training Engine</p>
         </header>
 
-        <!-- [VIEW 1] 입력 화면 -->
+        <div class="nav-tabs" id="navTabs" style="display:none;">
+            <button class="nav-tab" onclick="switchView('view-summary')">요약</button>
+            <button class="nav-tab active" onclick="switchView('view-schedule')">스케줄</button>
+            <button class="nav-tab" onclick="switchView('view-dashboard')">대시보드</button>
+            <button class="nav-tab" onclick="switchView('view-strategy')">레이스 전략</button>
+        </div>
+
+        <!-- VIEW 1: Input -->
         <div id="view-home" class="fade-in">
             <form id="runnerForm">
-                <!-- Inputs kept same -->
                 <div class="form-section">
                     <div class="section-title">1. Current Fitness (현재 기량)</div>
                     <div class="row">
                         <div class="col" style="flex: 0.8;"><label>최근 달린 거리</label><select id="currentDist" onchange="updateAll()"><option value="5">5km</option><option value="10" selected>10km</option><option value="21.0975">하프</option><option value="42.195">풀코스</option></select></div>
-                        <div class="col" style="flex: 1.2;"><label>최근 기록</label><div class="time-picker-group"><div class="time-select-wrapper"><select id="curH" onchange="updateAll()"></select><span class="time-label">h</span></div><div class="time-select-wrapper"><select id="curM" onchange="updateAll()"></select><span class="time-label">m</span></div><div class="time-select-wrapper"><select id="curS" onchange="updateAll()"></select><span class="time-label">s</span></div></div></div>
+                        <div class="col" style="flex: 1.2;"><label>최근 기록 (h:m:s)</label><div class="time-picker-group"><div class="time-select-wrapper"><select id="curH" onchange="updateAll()"></select><span class="time-label">h</span></div><div class="time-select-wrapper"><select id="curM" onchange="updateAll()"></select><span class="time-label">m</span></div><div class="time-select-wrapper"><select id="curS" onchange="updateAll()"></select><span class="time-label">s</span></div></div></div>
                     </div>
                 </div>
                 <div class="form-section">
                     <div class="section-title">2. Target Goal (목표 설정)</div>
                     <div class="row" style="margin-bottom:15px;">
                         <div class="col" style="flex:0.8;"><label>목표 대회</label><select id="targetDist" onchange="updateAll()"><option value="5">5K</option><option value="10">10K</option><option value="21.0975">하프</option><option value="42.195" selected>풀코스</option></select></div>
-                        <div class="col" style="flex:1.2;"><label>목표 기록 설정</label><div class="time-picker-group"><div class="time-select-wrapper"><select id="tarH" onchange="updateAll()"></select><span class="time-label">h</span></div><div class="time-select-wrapper"><select id="tarM" onchange="updateAll()"></select><span class="time-label">m</span></div><div class="time-select-wrapper"><select id="tarS" onchange="updateAll()"></select><span class="time-label">s</span></div></div></div>
+                        <div class="col" style="flex:1.2;"><label>목표 기록</label><div class="time-picker-group"><div class="time-select-wrapper"><select id="tarH" onchange="updateAll()"></select><span class="time-label">h</span></div><div class="time-select-wrapper"><select id="tarM" onchange="updateAll()"></select><span class="time-label">m</span></div><div class="time-select-wrapper"><select id="tarS" onchange="updateAll()"></select><span class="time-label">s</span></div></div></div>
                     </div>
-                    <label style="margin-top:25px;">훈련 기간 선택</label>
-                    <div class="preset-group"><button type="button" class="preset-btn" id="btn8" onclick="selectPreset(8, this)">8주</button><button type="button" class="preset-btn active" id="btn12" onclick="selectPreset(12, this)">12주</button><button type="button" class="preset-btn" id="btn16" onclick="selectPreset(16, this)">16주</button><button type="button" class="preset-btn" id="btnAuto" onclick="selectPreset('auto', this)">대회일까지</button></div>
+                    <label style="margin-top:25px;">훈련 기간</label>
+                    <!-- [FIXED] Added rec-badge spans -->
+                    <div class="preset-group">
+                        <button type="button" class="preset-btn" id="btn8" onclick="selectPreset(8, this)">8주<span class="rec-badge">추천</span></button>
+                        <button type="button" class="preset-btn active" id="btn12" onclick="selectPreset(12, this)">12주<span class="rec-badge">추천</span></button>
+                        <button type="button" class="preset-btn" id="btn16" onclick="selectPreset(16, this)">16주<span class="rec-badge">추천</span></button>
+                        <button type="button" class="preset-btn" id="btnAuto" onclick="selectPreset('auto', this)">대회일까지<span class="rec-badge">추천</span></button>
+                    </div>
                     <div class="row" style="margin-bottom: 25px;">
                         <div class="col"><label>훈련 시작일 (Start)</label><input type="date" id="startDate" onchange="updateAll()"></div>
                         <div class="col"><label>대회 날짜 (Race)</label><input type="date" id="raceDate" onchange="enableCustomMode()"></div>
                     </div>
-                    <div id="goalFeedback" class="feedback-box"><span>🎯 기록을 입력하면 AI가 분석해드립니다.</span></div>
+                    <div id="goalFeedback" class="feedback-box"><span>🎯 AI 분석 대기중...</span></div>
                 </div>
-                <div class="form-section"><div class="section-title">3. Schedule (훈련 빈도)</div><select id="freq" onchange="updateAll()"><option value="3">주 3회 (유지/건강)</option><option value="4" selected>주 4회 (기록향상 권장)</option><option value="5">주 5회 (엘리트/Sub-3)</option></select></div>
-                <button type="button" class="cta" onclick="generateAndGoToSummary()">프로그램 생성하기</button>
+                <div class="form-section"><div class="section-title">3. Schedule (빈도)</div><select id="freq" onchange="updateAll()"><option value="3">주 3회 (유지/건강)</option><option value="4" selected>주 4회 (기록향상 권장)</option><option value="5">주 5회 (엘리트/Sub-3)</option></select></div>
+                <button type="button" class="cta" onclick="generatePlan()">🚀 AI 훈련 프로그램 생성</button>
             </form>
         </div>
 
-        <!-- [VIEW 2] 요약 화면 -->
+        <!-- VIEW 2: Summary -->
         <div id="view-summary" class="hidden">
             <div class="summary-card">
-                <span class="sub-stat" id="sumTitle">목표 설정 기록</span>
+                <span class="sub-stat" id="sumTitle">목표 설정</span>
                 <span class="big-stat" id="sumTargetTime">00:00:00</span>
-                <div class="summary-info-row"><span><span class="badge" style="background:var(--primary); color:white;">VDOT <span id="sumVdot">00</span></span></span><span>훈련기간: <b style="color:#222" id="sumWeeks">00주</b></span><span>대회까지: <b style="color:#222" id="sumDday">D-00</b></span></div>
+                <div class="summary-info-row"><span><span class="badge" style="background:var(--primary); color:white;">VDOT <span id="sumVdot">00</span></span></span><span>기간: <b id="sumWeeks">00주</b></span><span>D-Day: <b id="sumDday">D-00</b></span></div>
             </div>
-            <h4 class="section-title">🏃 Training Paces & Types</h4>
+            <h4 class="section-title">🏃 Training Paces (Adaptive)</h4>
             <div class="pace-grid">
-                <!-- Paces injected via JS -->
                 <div class="pace-card"><div class="pace-label"><div class="dot" style="background:#64D2FF"></div>Recovery</div><div class="pace-value" id="paceRecovery">-</div></div>
                 <div class="pace-card"><div class="pace-label"><div class="dot" style="background:var(--success)"></div>Easy / LSD</div><div class="pace-value" id="paceEasy">-</div></div>
                 <div class="pace-card"><div class="pace-label"><div class="dot" style="background:#AF52DE"></div>Steady</div><div class="pace-value" id="paceSteady">-</div></div>
-                <div class="pace-card"><div class="pace-label"><div class="dot" style="background:var(--fartlek)"></div>Fartlek</div><div class="pace-value">자유 변속</div></div>
                 <div class="pace-card"><div class="pace-label"><div class="dot" style="background:var(--warning)"></div>Threshold</div><div class="pace-value" id="paceThreshold">-</div></div>
                 <div class="pace-card"><div class="pace-label"><div class="dot" style="background:var(--danger)"></div>Interval</div><div class="pace-value" id="paceInterval">-</div></div>
+                <div class="pace-card"><div class="pace-label"><div class="dot" style="background:var(--primary)"></div>Race Pace</div><div class="pace-value" id="paceMarathon">-</div></div>
             </div>
-            <h4 class="section-title">📚 Training Glossary (훈련 용어집)</h4>
-            <div class="guide-list">
-                <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">🩹</span><span class="guide-title">Recovery (회복주)</span><span class="guide-tag">Zone 1</span></div><div class="guide-desc">고강도 훈련 다음 날, 몸에 쌓인 피로를 제거하기 위해 <strong>아주 천천히</strong> 달립니다.</div></div>
-                <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">🏃‍♂️</span><span class="guide-title">Easy Run (조깅)</span><span class="guide-tag">Zone 2</span></div><div class="guide-desc">대화가 가능한 편안한 속도입니다. LSD는 이 속도로 <strong>오래, 멀리</strong> 달리는 훈련입니다.</div></div>
-                <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">🐎</span><span class="guide-title">Steady Run (지속주)</span><span class="guide-tag">Zone 3</span></div><div class="guide-desc">조깅보다 빠르고 대회 페이스보다 약간 느린, <strong>기분 좋은 묵직함</strong>을 유지하며 달립니다.</div></div>
-                <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">💨</span><span class="guide-title">Fartlek (파틀렉)</span><span class="guide-tag">Zone 3-5</span></div><div class="guide-desc">"스피드 플레이"라는 뜻입니다. 정해진 형식 없이 지형지물이나 기분에 따라 빠르게 달렸다가 천천히 달리기를 반복합니다.</div></div>
-                <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">🔥</span><span class="guide-title">Threshold (역치주)</span><span class="guide-tag">Zone 4</span></div><div class="guide-desc">"편안하게 힘들다"는 강도입니다. 젖산이 쌓이는 시점을 늦춰주어 스피드 지구력을 기릅니다.</div></div>
-                <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">⚡</span><span class="guide-title">Interval (인터벌)</span><span class="guide-tag">Zone 5</span></div><div class="guide-desc">최대 심박수에 도달하는 질주와 불완전 휴식을 반복합니다. 엔진(심폐기능)의 크기를 키우는 가장 강력한 훈련입니다.</div></div>
-            </div>
-            <button type="button" class="cta" onclick="goToDetail()">상세 훈련 로드맵 보기</button>
-            <button type="button" class="secondary-btn" onclick="goToHome()">조건 다시 설정하기</button>
+            <button type="button" class="cta" onclick="switchView('view-schedule')">📆 주간 스케줄 확인하기</button>
         </div>
 
-        <!-- [VIEW 3] Roadmap 화면 -->
-        <div id="view-detail" class="hidden">
-            <div style="margin-bottom:25px;"><h3 style="margin:0;">📅 주차별 훈련 로드맵</h3><p style="color:#666; font-size:0.95rem;">총 <span id="detailTotalWeeks">0</span>주 / <span id="detailTarget"></span> 목표</p></div>
-            <div class="timeline-container" id="timelineArea"></div>
-            <button type="button" class="cta" style="margin-top:20px;" onclick="goToSchedule()">📆 일자별 상세 스케줄 보기</button>
-            <button type="button" class="secondary-btn" onclick="goToSummary()">← 요약 화면으로 돌아가기</button>
-        </div>
-
-        <!-- [VIEW 4] Daily Schedule 화면 -->
+        <!-- VIEW 4: Daily Schedule -->
         <div id="view-schedule" class="hidden">
-            <h3 style="margin:0 0 15px 0;">🗓️ 주간 훈련 스케줄</h3>
             <div class="week-nav">
                 <button class="nav-btn" onclick="changeWeek(-1)">❮</button>
                 <div class="week-info"><span class="week-title" id="displayWeek">Week 1</span><span class="week-phase" id="displayPhase">Base Phase</span></div>
                 <button class="nav-btn" onclick="changeWeek(1)">❯</button>
             </div>
             <div class="daily-grid" id="dailyGrid"></div>
-            
             <div id="detailBox" class="detail-box" style="display:none;">
-                <div class="detail-header"><div class="detail-icon-box" id="dIcon"></div><div class="detail-title-group"><h3 id="dTitle"></h3><span id="dSubtitle"></span></div></div>
-                <div class="detail-content">
-                    <div class="info-block"><span class="info-label">🎯 WHY (오늘의 목표)</span><div class="info-text" id="dWhy"></div></div>
-                    <div class="info-block"><span class="info-label">⚙️ HOW (상세 훈련 루틴)</span><div class="info-text" id="dHow"></div></div>
+                <div class="detail-header">
+                    <div class="detail-icon-box" id="dIcon"></div>
+                    <div class="detail-title-group"><h3 id="dTitle"></h3><span id="dSubtitle"></span></div>
                 </div>
-                <div class="caution-box"><span class="caution-label">⚠️ CAUTION (주의사항)</span><span id="dCaution"></span></div>
-                
-                <!-- Complete Button -->
-                <button id="completeBtn" class="complete-btn" onclick="openFeedbackModal()">✅ 훈련 완료 체크</button>
+                <div class="detail-content">
+                    <div class="info-block"><span class="info-label">🎯 WHY</span><div class="info-text" id="dWhy"></div></div>
+                    <div class="info-block"><span class="info-label">⚙️ HOW</span><div class="info-text" id="dHow"></div></div>
+                </div>
+                <div class="caution-box"><span class="caution-label">⚠️ WARNING</span><span id="dCaution"></span></div>
+                <button id="completeBtn" class="complete-btn" onclick="openFeedbackModal()">✅ 훈련 완료 및 피드백</button>
             </div>
-            <button type="button" class="secondary-btn" style="margin-top:30px;" onclick="goToDetail()">← 로드맵으로 돌아가기</button>
+        </div>
+
+        <!-- VIEW 5: Dashboard -->
+        <div id="view-dashboard" class="hidden">
+            <h3 style="margin-top:0;">📊 Training Analysis</h3>
+            <div class="dashboard-grid">
+                <div class="kpi-card"><span class="kpi-lbl">이번주 총 거리</span><div class="kpi-val" id="dashWeeklyDist">0 km</div></div>
+                <div class="kpi-card"><span class="kpi-lbl">부상 위험도 (ACWR)</span><div class="kpi-val" id="dashRisk" style="color:var(--success)">Low</div></div>
+            </div>
+            <div class="chart-box"><canvas id="volumeChart"></canvas></div>
+            <div class="chart-box" style="margin-top:20px;"><canvas id="intensityChart"></canvas></div>
+        </div>
+
+        <!-- VIEW 6: Race Strategy -->
+        <div id="view-strategy" class="hidden">
+            <h3 style="margin-top:0;">🏁 Race Strategy</h3>
+            <div class="strategy-box">
+                <label>전략 성향 선택</label>
+                <div class="preset-group" style="margin-top:10px;">
+                    <button type="button" class="preset-btn active" onclick="updateStrategy('Negative')">Negative Split<br>(후반 가속)</button>
+                    <button type="button" class="preset-btn" onclick="updateStrategy('Even')">Even Pace<br>(일정하게)</button>
+                    <button type="button" class="preset-btn" onclick="updateStrategy('Positive')">Positive Split<br>(초반 확보)</button>
+                </div>
+                <div id="strategyDesc" style="color:#666; font-size:0.9rem; margin-bottom:20px;">체력을 비축했다가 후반에 승부를 거는 가장 이상적인 기록 달성 전략입니다.</div>
+                <table class="split-table" id="splitTable"></table>
+            </div>
         </div>
     </div>
 
@@ -262,8 +303,7 @@
     <div id="feedbackModal" class="modal-overlay">
         <div class="modal-content">
             <h3 style="margin-top:0;">오늘 훈련 어떠셨나요?</h3>
-            <p style="color:#666; font-size:0.9rem;">솔직한 피드백이 AI 코칭의 정확도를 높입니다.</p>
-            
+            <p style="color:#666; font-size:0.9rem;">RPE(자각도)를 입력하면 내일 훈련이 조정됩니다.</p>
             <div class="rpe-grid">
                 <div class="rpe-btn" onclick="selectRPE(1, this)"><span class="rpe-emoji">😎</span><span class="rpe-label">너무 쉬움</span></div>
                 <div class="rpe-btn" onclick="selectRPE(2, this)"><span class="rpe-emoji">😃</span><span class="rpe-label">쉬움</span></div>
@@ -271,168 +311,146 @@
                 <div class="rpe-btn" onclick="selectRPE(4, this)"><span class="rpe-emoji">🥵</span><span class="rpe-label">힘듦</span></div>
                 <div class="rpe-btn" onclick="selectRPE(5, this)"><span class="rpe-emoji">🤮</span><span class="rpe-label">매우 힘듦</span></div>
             </div>
-
             <button class="cta" onclick="submitFeedback()">피드백 제출</button>
-            <button class="secondary-btn" onclick="closeFeedbackModal()" style="font-size:0.9rem; margin-top:10px;">취소</button>
+            <button class="secondary-btn" onclick="closeFeedbackModal()" style="font-size:0.9rem; margin-top:5px;">취소</button>
         </div>
     </div>
-
-    <!-- Toast Notification -->
+    
     <div id="toast" class="toast">메시지</div>
 
     <script>
-        let currentTrainingWeeks = 12; 
-        let userPaces = {}; 
-        let userFreq = 4;   
-        let globalTargetDist = 42.195; 
-        let currentViewWeek = 1;
-        let globalStartDate = new Date(); 
-        
-        // v4.0 New Variables
-        let paceAdjustmentFactor = 1.0; // 1.0 = 100% (Normal), >1.0 Slower, <1.0 Faster
-        let completedWorkouts = {}; // Key: "W{week}-D{dayIndex}", Value: RPE score
-        let selectedRPE = 0;
-        let currentSelectedPlan = null; // To store which plan is currently viewed
+        let state = { weeks: 12, targetSec: 0, targetDist: 42.195, startDay: new Date(), raceDay: new Date(), freq: 4, paceFactor: 1.0, completed: {}, viewWeek: 1 };
+        let userPaces = {}; let currentSelectedPlan = null; let selectedRPEValue = 0; let selectedPlanId = null;
 
         window.onload = function() { 
             initTimeSelects(); 
             document.getElementById('startDate').valueAsDate = new Date();
-            const rd = new Date(); rd.setMonth(rd.getMonth()+3); 
-            document.getElementById('raceDate').valueAsDate = rd;
+            const rd = new Date(); rd.setMonth(rd.getMonth()+3); document.getElementById('raceDate').valueAsDate = rd;
             selectPreset(12, document.getElementById('btn12')); 
-            updateAll(); 
-        }
-
-        // ... (Previous Functions: initTimeSelects, updateAll, getInputs, calculateRecommendation, updateRecommendationBadge, updateFeedbackBox, selectPreset, enableCustomMode, formatPace, secondsToTime, switchView, goToHome...) ...
-        function initTimeSelects() {
-            const createOpts = (el, max) => { for(let i=0; i<=max; i++) el.add(new Option(i, i)); };
-            createOpts(document.getElementById('curH'), 9); createOpts(document.getElementById('curM'), 59); createOpts(document.getElementById('curS'), 59); 
-            createOpts(document.getElementById('tarH'), 9); createOpts(document.getElementById('tarM'), 59); createOpts(document.getElementById('tarS'), 59);
-        }
-        function updateAll() { const i=getInputs(); if(i){ const r=calculateRecommendation(i); updateRecommendationBadge(r); updateFeedbackBox(i); } }
-        
-        function getInputs() {
-            const curDist=parseFloat(document.getElementById('currentDist').value), curH=parseInt(document.getElementById('curH').value)||0, curM=parseInt(document.getElementById('curM').value)||0, curS=parseInt(document.getElementById('curS').value)||0;
-            const curSec=(curH*3600)+(curM*60)+curS; if(curSec===0)return null;
-            const targetDist=parseFloat(document.getElementById('targetDist').value), tarH=parseInt(document.getElementById('tarH').value)||0, tarM=parseInt(document.getElementById('tarM').value)||0, tarS=parseInt(document.getElementById('tarS').value)||0;
-            const targetSec=(tarH*3600)+(tarM*60)+tarS; 
-            const freq=parseInt(document.getElementById('freq').value)||4;
-            return {curDist,curSec,targetDist,targetSec,freq};
-        }
-
-        function calculateRecommendation(d){
-            const eq=d.curSec*Math.pow((d.targetDist/d.curDist),1.06); let fM=(d.freq===3)?0.8:(d.freq===5?1.2:1.0); const p=(w)=>eq*(1-(w*0.0025*fM));
-            if(d.targetSec===0) return 12;
-            if(p(8)<=d.targetSec*1.01)return 8; if(p(12)<=d.targetSec*1.01)return 12; return 16;
-        }
-        
-        function updateRecommendationBadge(w){
-            document.querySelectorAll('.rec-badge').forEach(b => { if(b && b.style) b.style.display='none'; });
-            let btnId = w===8?"btn8":(w===12?"btn12":"btn16");
-            const btn=document.getElementById(btnId); 
-            if(btn){ const badge = btn.querySelector('.rec-badge'); if(badge) { badge.style.display='inline-block'; badge.innerText="AI 추천"; } }
-        }
-        function updateFeedbackBox(d){
-            const eqSec=d.curSec*Math.pow((d.targetDist/d.curDist),1.06); let fM=(d.freq===3)?0.8:(d.freq===5?1.2:1.0); const pSec=eqSec*(1-(currentTrainingWeeks*0.0025*fM));
-            const ph=Math.floor(pSec/3600), pm=Math.floor((pSec%3600)/60), ps=Math.floor(pSec%60); const str=(ph>0?`${ph}시간 `:"")+`${pm}분 ${ps}초`;
-            const box=document.getElementById('goalFeedback');
-            if(d.targetSec===0){box.className="feedback-box";box.innerHTML=`<span>🤖 목표를 설정하지 않으셨네요.<br>현재 기량 기준 <strong>${currentTrainingWeeks}주</strong> 훈련 시 예상 기록:</span><div class="rec-time-display">${str}</div>`;return;}
-            const diff=(pSec-d.targetSec)/pSec; let msg="",cls="feedback-box";
-            if(diff<=-0.02){msg="👍 충분합니다. 여유롭게 달성 가능합니다.";cls+=" safe";}else if(diff<=0.015){msg="👌 적절합니다. 성실히 훈련하면 달성됩니다.";cls+=" safe";}else if(diff<=0.05){msg="🔥 도전적입니다. 훈련을 빠지면 힘듭니다.";cls+=" challenge";}else{msg="⚠️ 매우 어렵습니다. 목표를 낮추거나 기간을 늘리세요.";cls+=" danger";}
-            box.className=cls; box.innerHTML=`<span>${msg}</span><div style="font-size:0.9rem; color:#555; margin-top:5px; padding-top:5px; border-top:1px solid rgba(0,0,0,0.1);">AI 예상: <strong>${str}</strong></div>`;
-        }
-        function selectPreset(w,b){
-            document.querySelectorAll('.preset-btn').forEach(x=>x.classList.remove('active')); if(b)b.classList.add('active');
-            const sVal = document.getElementById('startDate').value; const startD = sVal ? new Date(sVal) : new Date();
-            if(w==='auto'){
-                const v=document.getElementById('raceDate').value;
-                if(!v){ const d=new Date(startD); d.setMonth(d.getMonth()+3); document.getElementById('raceDate').valueAsDate=d; currentTrainingWeeks=12; } 
-                else { const raceD = new Date(v); const diff=Math.ceil((raceD - startD)/(86400000)); currentTrainingWeeks=Math.max(4, Math.floor(diff/7)); }
-            } else { currentTrainingWeeks=w; const d=new Date(startD); d.setDate(d.getDate()+(w*7)); document.getElementById('raceDate').valueAsDate=d; }
             updateAll();
         }
-        function enableCustomMode(){
-            document.querySelectorAll('.preset-btn').forEach(x=>x.classList.remove('active')); document.getElementById('btnAuto').classList.add('active');
-            const sVal = document.getElementById('startDate').value; const startD = sVal ? new Date(sVal) : new Date(); const v=document.getElementById('raceDate').value; 
-            if(v){ const raceD = new Date(v); const diff=Math.ceil((raceD - startD)/86400000); currentTrainingWeeks=Math.max(1,Math.floor(diff/7)); updateAll(); }
-        }
-        function formatPace(s){const m=Math.floor(s/60),sc=Math.floor(s%60);return `${m}'${sc.toString().padStart(2,'0')}"`;}
-        function secondsToTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return (h>0?h+":":"")+m.toString().padStart(2,'0')+":"+sc.toString().padStart(2,'0');}
 
-        function switchView(id){
-            ['view-home','view-summary','view-detail','view-schedule'].forEach(v=>{document.getElementById(v).classList.add('hidden');document.getElementById(v).classList.remove('fade-in');});
-            document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('fade-in');
-            const sub = document.getElementById('pageSubtitle');
-            if(id==='view-home') sub.innerText="나만의 맞춤형 훈련 프로그램 설정";
-            else if(id==='view-summary') sub.innerText="과학적 데이터 분석 결과";
-            else if(id==='view-detail') sub.innerText="단계별 훈련 스케줄";
-            else sub.innerText="일자별 상세 훈련 가이드";
-            window.scrollTo(0,0);
+        function initTimeSelects() {
+            const create = (id, max) => { let el=document.getElementById(id); for(let i=0;i<=max;i++) el.add(new Option(i,i)); };
+            create('curH',9); create('curM',59); create('curS',59); create('tarH',9); create('tarM',59); create('tarS',59);
         }
-        function goToHome(){switchView('view-home');} function goToSummary(){switchView('view-summary');} function goToDetail(){switchView('view-detail');} 
-        function goToSchedule(){ currentViewWeek=1; switchView('view-schedule'); renderScheduleUI(); }
+        function formatPace(sec) { const m=Math.floor(sec/60), s=Math.floor(sec%60); return `${m}'${s.toString().padStart(2,'0')}"`; }
+        function secToTime(sec) { const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=Math.floor(sec%60); return (h>0?h+":":"")+m.toString().padStart(2,'0')+":"+s.toString().padStart(2,'0'); }
+        
+        function getInputs() {
+            const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+            const curSec = (getVal('curH')*3600) + (getVal('curM')*60) + getVal('curS');
+            let tarSec = (getVal('tarH')*3600) + (getVal('tarM')*60) + getVal('tarS');
+            if(curSec===0) return null;
+            return { curDist: getVal('currentDist'), curSec, targetDist: getVal('targetDist'), tarSec, freq: getVal('freq') };
+        }
 
-        // --- Generate Logic (Updated to reset adjustment) ---
-        function generateAndGoToSummary() {
-            let i = getInputs(); if(!i){alert("입력 확인 필요");return;}
-            if(i.targetSec===0) {
+        function updateAll() {
+            const i = getInputs(); if(!i) return;
+            const eqSec = i.curSec * Math.pow((i.targetDist / i.curDist), 1.06);
+            let fM = (i.freq===3)?0.8:(i.freq===5?1.2:1.0);
+            const pSec = eqSec * (1 - (state.weeks * 0.0025 * fM));
+            
+            // [FIXED] Badge Safety Check
+            updateRecommendationBadge(pSec, i.tarSec);
+
+            const ph=Math.floor(pSec/3600), pm=Math.floor((pSec%3600)/60), ps=Math.floor(pSec%60);
+            const str = (ph>0?`${ph}시간 `:"")+`${pm}분 ${ps}초`;
+            const box = document.getElementById('goalFeedback');
+            
+            if(i.tarSec === 0) {
+                box.className = "feedback-box";
+                box.innerHTML = `<span>🤖 목표 미설정. <strong>${state.weeks}주</strong> 훈련 시 예상:</span><div class="rec-time-display">${str}</div>`;
+            } else {
+                const diff = (pSec - i.tarSec)/pSec;
+                let msg="", cls="feedback-box";
+                if(diff<=-0.02){msg="👍 충분합니다.";cls+=" safe";} else if(diff<=0.015){msg="👌 적절합니다.";cls+=" safe";} else if(diff<=0.05){msg="🔥 도전적입니다.";cls+=" challenge";} else{msg="⚠️ 매우 어렵습니다.";cls+=" danger";}
+                box.className=cls;
+                box.innerHTML = `<span>${msg}</span><div style="font-size:0.9rem; color:#555; margin-top:5px; border-top:1px solid rgba(0,0,0,0.1); padding-top:5px;">AI 예상: <strong>${str}</strong></div>`;
+            }
+        }
+
+        // [FIXED] Robust Badge Update Function
+        function updateRecommendationBadge(pSec, tarSec) {
+            document.querySelectorAll('.rec-badge').forEach(b=>b.style.display='none');
+            const recW = (pSec <= (tarSec||pSec)*1.01) ? (tarSec?12:12) : 16; 
+            const btnId = recW===8?'btn8':(recW===12?'btn12':'btn16');
+            const btn = document.getElementById(btnId);
+            if(btn) { 
+                let b=btn.querySelector('.rec-badge'); 
+                if(b) { b.style.display='inline-block'; b.innerText="AI 추천"; }
+            }
+        }
+
+        function selectPreset(w, btn) {
+            document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+            const sD = new Date(document.getElementById('startDate').value);
+            if(w==='auto'){
+                const rD = new Date(document.getElementById('raceDate').value);
+                const diff = Math.ceil((rD-sD)/86400000);
+                state.weeks = Math.max(4, Math.floor(diff/7));
+            } else {
+                state.weeks = w;
+                const d = new Date(sD); d.setDate(d.getDate()+(w*7));
+                document.getElementById('raceDate').valueAsDate = d;
+            }
+            updateAll();
+        }
+
+        function enableCustomMode() {
+            document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active')); document.getElementById('btnAuto').classList.add('active');
+            const sD = new Date(document.getElementById('startDate').value);
+            const rD = new Date(document.getElementById('raceDate').value);
+            state.weeks = Math.max(1, Math.floor((rD-sD)/86400000/7));
+            updateAll();
+        }
+
+        function generatePlan() {
+            const i = getInputs(); if(!i) { alert("입력값을 확인해주세요."); return; }
+            state.startDay = new Date(document.getElementById('startDate').value);
+            state.raceDay = new Date(document.getElementById('raceDate').value);
+            state.freq = i.freq; state.targetDist = i.targetDist;
+            
+            if(i.tarSec === 0) {
                 const eqSec = i.curSec * Math.pow((i.targetDist / i.curDist), 1.06);
                 let fM = (i.freq===3)?0.8:(i.freq===5?1.2:1.0);
-                i.targetSec = Math.floor(eqSec * (1 - (currentTrainingWeeks * 0.0025 * fM)));
-                const h=Math.floor(i.targetSec/3600), m=Math.floor((i.targetSec%3600)/60), s=Math.floor(i.targetSec%60);
-                document.getElementById('tarH').value=h; document.getElementById('tarM').value=m; document.getElementById('tarS').value=s;
-                alert(`목표 기록을 자동 설정했습니다: ${h}시간 ${m}분 ${s}초`);
-            }
+                state.targetSec = Math.floor(eqSec * (1 - (state.weeks * 0.0025 * fM)));
+                alert(`목표 기록을 자동 설정했습니다: ${secToTime(state.targetSec)}`);
+            } else { state.targetSec = i.tarSec; }
 
-            const sVal = document.getElementById('startDate').value; globalStartDate = sVal ? new Date(sVal) : new Date();
-            const rVal = document.getElementById('raceDate').value; const raceD = rVal ? new Date(rVal) : new Date();
-            const diffDays = Math.ceil((raceD - globalStartDate)/86400000);
-            if(diffDays <= 0) { alert("대회 날짜는 시작일 이후여야 합니다."); return; }
-            
-            const totalWeeks = Math.floor(diffDays / 7);
-            userFreq = i.freq; globalTargetDist = i.targetDist;
-            
-            // Reset Adaptation
-            paceAdjustmentFactor = 1.0;
-            completedWorkouts = {};
+            const diffDays = Math.ceil((state.raceDay - state.startDay)/86400000);
+            if(diffDays <= 0) { alert("날짜 설정 오류"); return; }
+            state.weeks = Math.floor(diffDays/7);
 
-            // Calculate Base Paces (Reference)
-            const mp = i.targetSec/i.targetDist;
-            userPaces = calculateUserPaces(mp, paceAdjustmentFactor);
-
-            const vdot = (1000/((i.targetSec*Math.pow(10/i.targetDist,1.06))/60)*2.5).toFixed(1);
+            recalcPaces();
             
-            document.getElementById('sumTitle').innerText = `${i.targetDist===42.195?'Full':(i.targetDist===21.0975?'Half':(i.targetDist===10?'10K':'5K'))} 목표`;
-            document.getElementById('sumTargetTime').innerText = secondsToTime(i.targetSec);
+            const vdot = (1000/((state.targetSec*Math.pow(10/state.targetDist,1.06))/60)*2.5).toFixed(1);
+            document.getElementById('sumTargetTime').innerText = secToTime(state.targetSec);
             document.getElementById('sumVdot').innerText = vdot;
-            document.getElementById('sumWeeks').innerText = `${totalWeeks}주`;
-            document.getElementById('sumDday').innerText = `D-${diffDays}`;
+            document.getElementById('sumWeeks').innerText = state.weeks + "주";
+            document.getElementById('sumDday').innerText = "D-" + diffDays;
             
-            updatePaceCards(); // Render Paces
+            updatePaceCards();
+            state.viewWeek = 1;
+            renderDailyGrid(1);
+            renderDashboard();
+            updateStrategy('Negative');
 
-            renderTimeline(totalWeeks, i.freq, i.targetDist);
-            document.getElementById('detailTotalWeeks').innerText = totalWeeks;
-            document.getElementById('detailTarget').innerText = document.getElementById('sumTitle').innerText;
-            
-            goToSummary();
+            document.getElementById('navTabs').style.display = 'flex';
+            switchView('view-summary');
         }
 
-        function calculateUserPaces(mp, factor) {
-            // Factor > 1.0 means slower (Harder rpe -> slower pace)
-            // Factor < 1.0 means faster
-            const adjMp = mp * factor;
-            return {
-                recovery: formatPace(adjMp*1.35),
-                easy: formatPace(adjMp*1.25),
-                steady: formatPace(adjMp*1.10),
-                marathon: formatPace(adjMp),
-                threshold: formatPace(adjMp*0.93),
-                interval: formatPace(adjMp*0.88),
-                rawMp: adjMp // store raw for calc
+        function recalcPaces() {
+            const baseMP = state.targetSec / state.targetDist;
+            const adjMP = baseMP * state.paceFactor;
+            userPaces = {
+                recovery: formatPace(adjMP*1.35), easy: formatPace(adjMP*1.25), steady: formatPace(adjMP*1.10),
+                marathon: formatPace(adjMP), threshold: formatPace(adjMP*0.93), interval: formatPace(adjMP*0.88), raw: adjMP
             };
         }
 
         function updatePaceCards() {
+            if(!document.getElementById('paceEasy')) return;
             document.getElementById('paceRecovery').innerText = userPaces.recovery + "/km";
             document.getElementById('paceEasy').innerText = userPaces.easy + "/km";
             document.getElementById('paceSteady').innerText = userPaces.steady + "/km";
@@ -441,223 +459,137 @@
             document.getElementById('paceInterval').innerText = userPaces.interval + "/km";
         }
 
-        // ... (renderTimeline, changeWeek, renderScheduleUI, getPhaseName same as before) ...
-        function renderTimeline(weeks, freq, targetDist) {
-            const container = document.getElementById('timelineArea'); container.innerHTML = "";
-            let taper=2, peak=Math.max(2, Math.floor(weeks*0.25)), build=Math.max(3, Math.floor(weeks*0.35)), base=weeks-(taper+peak+build);
-            if(base<1){base=1; build=weeks-(taper+peak+base);}
-            const addCard = (type,name,dur,desc) => container.innerHTML += `<div class="phase-card ${type}"><div class="phase-header"><span class="phase-name">${name}</span><span class="phase-weeks">${dur}주간</span></div><div class="phase-desc">${desc}</div></div>`;
-            addCard('phase-base','1. Base',base,'기초 체력 및 유산소 베이스 구축'); addCard('phase-build','2. Build',build,'마일리지 증가 및 역치 훈련'); addCard('phase-peak','3. Peak',peak,'최대 강도, 실전 페이스 적응'); addCard('phase-taper','4. Taper',taper,'훈련량 감소 및 컨디션 조절');
-        }
-        function changeWeek(d){ const n=currentViewWeek+d; if(n<1||n>currentTrainingWeeks)return; currentViewWeek=n; renderScheduleUI(); }
-        function renderScheduleUI(){
-            const p=getPhaseName(currentViewWeek, currentTrainingWeeks);
-            document.getElementById('displayWeek').innerText=`Week ${currentViewWeek}`; document.getElementById('displayPhase').innerText=`${p} Phase`;
-            renderDailyGrid(currentViewWeek);
-        }
-        function getPhaseName(w,t){
-            let tp=2, pk=Math.max(2,Math.floor(t*0.25)), bd=Math.max(3,Math.floor(t*0.35)), bs=t-(tp+pk+bd);
-            if(bs<1) bs=1;
-            if(w<=bs) return "Base"; if(w<=bs+bd) return "Build"; if(w<=bs+bd+pk) return "Peak"; return "Taper";
+        function changeWeek(d) {
+            const n = state.viewWeek + d;
+            if(n < 1 || n > state.weeks) return;
+            state.viewWeek = n;
+            renderDailyGrid(n);
         }
 
-        // --- Schedule Rendering with Completed Status ---
-        function renderDailyGrid(wNum){
-            const grid=document.getElementById('dailyGrid'); grid.innerHTML="";
-            const phase=getPhaseName(wNum,currentTrainingWeeks);
-            const startDay = new Date(globalStartDate); startDay.setDate(globalStartDate.getDate() + (wNum-1)*7);
-            const days=['일','월','화','수','목','금','토'];
-            const plans=getWeeklyPlan(wNum,phase,userFreq,globalTargetDist);
+        function renderDailyGrid(wNum) {
+            const grid = document.getElementById('dailyGrid'); grid.innerHTML = "";
+            const phase = getPhase(wNum);
+            document.getElementById('displayWeek').innerText = `Week ${wNum}`;
+            document.getElementById('displayPhase').innerText = `${phase} Phase`;
+
+            const startD = new Date(state.startDay); startD.setDate(startD.getDate() + (wNum-1)*7);
+            const basePlans = getWeeklyPlan(wNum, phase); 
             
-            plans.forEach((p,i)=>{
-                const d=new Date(startDay); d.setDate(startDay.getDate()+i);
-                const dayName = days[d.getDay()]; const dStr=`${d.getMonth()+1}.${d.getDate()} (${dayName})`;
-                const today = new Date();
-                const isToday = (d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear());
-                
-                // Check if completed
+            basePlans.forEach((plan, i) => {
+                const date = new Date(startD); date.setDate(startD.getDate() + i);
+                const dStr = `${date.getMonth()+1}.${date.getDate()} (${['일','월','화','수','목','금','토'][date.getDay()]})`;
+                const isToday = isSameDay(date, new Date());
                 const id = `W${wNum}-D${i}`;
-                const isDone = completedWorkouts[id] !== undefined;
+                const isDone = state.completed[id];
 
-                const card=document.createElement('div');
-                card.className=`day-card type-${p.type} ${isToday?'today':''} ${isDone?'completed':''}`;
-                card.onclick=(e)=>{
-                    document.querySelectorAll('.day-card').forEach(x=>x.classList.remove('active')); e.currentTarget.classList.add('active'); 
-                    currentSelectedPlan = { ...p, id: id, date: dStr }; // Store current plan info
-                    showDetail(p, isDone);
-                };
+                const card = document.createElement('div');
+                card.className = `day-card type-${plan.type} ${isToday?'today':''} ${isDone?'completed':''}`;
                 
-                let badge = "";
-                if(isToday) badge = `<span class="day-badge" style="background:#1c1c1e; color:#fff;">TODAY</span>`;
-                else if(p.type==='Rest') badge = `<span class="day-badge">REST</span>`;
+                const check = document.createElement('div');
+                check.className = `check-circle ${isDone?'checked':''}`;
+                check.onclick = (e) => { e.stopPropagation(); openFeedback(id); };
+                card.appendChild(check);
 
-                card.innerHTML=`<div class="day-header"><div class="day-date">${dStr}</div>${badge}</div><span class="day-icon">${p.icon}</span><div class="day-title">${p.title}</div><div class="day-desc">${p.desc}</div>`;
+                card.onclick = () => showDetail(plan, id);
+                card.innerHTML += `<div class="day-header"><div class="day-date">${dStr}</div>${isToday?'<span class="day-badge">TODAY</span>':''}</div><span class="day-icon">${plan.icon}</span><div class="day-title">${plan.title}</div><div class="day-desc">${plan.desc}</div>`;
                 grid.appendChild(card);
             });
-            if(grid.firstElementChild) { 
-                grid.firstElementChild.classList.add('active'); 
-                currentSelectedPlan = { ...plans[0], id: `W${wNum}-D0`, date: "Day 1" };
-                showDetail(plans[0], completedWorkouts[`W${wNum}-D0`]); 
-            }
+            showDetail(basePlans[0], `W${wNum}-D0`);
         }
 
-        function showDetail(p, isDone){
-            document.getElementById('detailBox').style.display='block';
-            document.getElementById('dIcon').innerText=p.icon; document.getElementById('dTitle').innerText=p.title; document.getElementById('dSubtitle').innerText=p.desc;
-            document.getElementById('dWhy').innerText=p.why; document.getElementById('dHow').innerHTML=p.how; document.getElementById('dCaution').innerText=p.caution;
-            
-            // Button State
-            const btn = document.getElementById('completeBtn');
-            if(isDone) {
-                btn.innerText = "✅ 훈련 완료됨 (피드백 완료)";
-                btn.classList.add('disabled');
-                btn.onclick = null;
-            } else {
-                btn.innerText = "✅ 훈련 완료 및 피드백";
-                btn.classList.remove('disabled');
-                btn.onclick = openFeedbackModal;
-            }
+        function getPhase(w) {
+            let t=2, p=Math.floor(state.weeks*0.25), b=Math.floor(state.weeks*0.35), bs=state.weeks-(t+p+b);
+            if(bs<1) bs=1; if(w<=bs) return "Base"; if(w<=bs+b) return "Build"; if(w<=bs+b+p) return "Peak"; return "Taper";
         }
 
-        // --- FEEDBACK & ADAPTATION LOGIC ---
-        function openFeedbackModal() {
-            document.getElementById('feedbackModal').style.display = 'flex';
-            selectedRPE = 0;
-            document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('selected'));
-        }
-        function closeFeedbackModal() {
-            document.getElementById('feedbackModal').style.display = 'none';
-        }
-        function selectRPE(val, el) {
-            selectedRPE = val;
-            document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('selected'));
-            el.classList.add('selected');
-        }
-        
-        function submitFeedback() {
-            if(selectedRPE === 0) { alert("난이도를 선택해주세요."); return; }
-            
-            // 1. Save completion
-            completedWorkouts[currentSelectedPlan.id] = selectedRPE;
-            
-            // 2. Logic for Adaptation
-            // Hard workout (Speed, Interval, Tempo) logic vs Easy workout logic
-            // But simple logic for MVP:
-            // RPE 5 (Max effort) -> Reduce intensity (Slow down by 2%)
-            // RPE 4 (Hard) -> Maintain or slight reduce if frequent
-            // RPE 1-2 (Too Easy) -> Increase intensity (Speed up by 1%)
-            
-            let adjustmentMsg = "훈련 데이터가 저장되었습니다.";
-            let changed = false;
-
-            if(selectedRPE === 5) {
-                paceAdjustmentFactor *= 1.02; // Make paces 2% slower
-                adjustmentMsg = "⚠️ 훈련이 매우 힘드셨군요. 남은 일정의 페이스를 하향 조정하여 회복을 돕습니다.";
-                changed = true;
-            } else if(selectedRPE === 4) {
-                // If easy run felt hard (4), adjust. If point run felt hard (4), it's okay.
-                // For simplicity, slight adjustment
-                paceAdjustmentFactor *= 1.01;
-                adjustmentMsg = "🔥 고생하셨습니다! 무리하지 않도록 강도를 아주 조금 낮췄습니다.";
-                changed = true;
-            } else if(selectedRPE === 1) {
-                paceAdjustmentFactor *= 0.99; // Make paces 1% faster
-                adjustmentMsg = "💪 컨디션이 좋으시군요! 훈련 강도를 상향 조정했습니다.";
-                changed = true;
-            }
-
-            // 3. Recalculate Paces globally
-            if(changed) {
-                userPaces = calculateUserPaces(userPaces.rawMp / (paceAdjustmentFactor/ (paceAdjustmentFactor/1.0 || 1)), paceAdjustmentFactor); 
-                // Wait, rawMp is static base. 
-                // Correction: rawMp needs to be preserved. 
-                // Let's grab base MP from View 2 logic? Or simpler: store base MP.
-                // Re-calling calculateUserPaces uses the *current* adjusted factor on the base.
-                // NOTE: userPaces.rawMp tracks the *adjusted* base? No, let's fix this.
-                // Easy fix: We apply factor to the *original* MP. But we lost original MP scope.
-                // Let's just multiply current strings? No, parsing is hard.
-                // Better: `userPaces` should be recalculated from scratch using `getInputs`.
-                // Actually, `userPaces` is global. Let's recalculate based on Target Time which doesn't change.
-                
-                const inputs = getInputs();
-                // Re-calc Target MP
-                const eqSec = inputs.curSec * Math.pow((inputs.targetDist / inputs.curDist), 1.06);
-                let fM = (inputs.freq===3)?0.8:(inputs.freq===5?1.2:1.0);
-                const targetSec = Math.floor(eqSec * (1 - (currentTrainingWeeks * 0.0025 * fM)));
-                const baseMp = targetSec / inputs.targetDist;
-                
-                userPaces = calculateUserPaces(baseMp, paceAdjustmentFactor);
-                updatePaceCards(); // View 2 update
-            }
-
-            // 4. Close & Refresh
-            closeFeedbackModal();
-            showToast(adjustmentMsg);
-            
-            // Re-render grid to show "Completed" state and new paces in text
-            renderDailyGrid(currentViewWeek);
-            
-            // Update detail view immediately
-            const p = currentSelectedPlan; // It's reference might be old, but type/title ok. Desc needs update.
-            // Actually getWeeklyPlan generates strings using `userPaces`. So re-rendering grid updates descriptions!
-            // We just need to refresh the detail view text.
-            // Find the plan again from the new grid generation?
-            // Simpler: Just hide detail box or keep it open with updated "Done" button.
-            // Let's hide it to force user to re-click if they want to see updated pace.
-            // Or just update button state.
-            const btn = document.getElementById('completeBtn');
-            btn.innerText = "✅ 훈련 완료됨 (피드백 완료)";
-            btn.classList.add('disabled');
-            btn.onclick = null;
-        }
-
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 3000);
-        }
-
-        // ... (getWeeklyPlan same as v3.8.1) ...
-        function getWeeklyPlan(week, phase, freq, distType) {
-            const isFull = distType > 30; const isHalf = distType > 15 && distType < 30;
+        function getWeeklyPlan(week, phase) {
+            const isFull = state.targetDist > 30;
             let p = [
-                { type: 'Easy', title: 'Easy Run', icon: '🏃‍♂️' },
-                { type: 'Wed', title: '보강/Easy', icon: '🧘' },
-                { type: 'Speed', title: 'Point Run', icon: '⚡' },
-                { type: 'Rest', title: '휴식', icon: '🛌' },
-                { type: 'Long', title: 'LSD', icon: '🏔️' },
-                { type: 'Recovery', title: 'Recovery', icon: '🩹' },
-                { type: 'Rest', title: '휴식', icon: '🛌' }
+                {type:'Easy', title:'Easy Run', icon:'🏃‍♂️'}, {type:'Wed', title:'보강/Easy', icon:'🧘'}, {type:'Speed', title:'Point', icon:'⚡'},
+                {type:'Rest', title:'휴식', icon:'🛌'}, {type:'Long', title:'LSD', icon:'🏔️'}, {type:'Recovery', title:'Recovery', icon:'🩹'}, {type:'Rest', title:'휴식', icon:'🛌'}
             ];
-            
-            if(freq === 3) { 
-                p = [ { type: 'Easy', title: 'Easy Run', icon: '🏃‍♂️' }, { type: 'Rest', title: '휴식', icon: '🛌' }, { type: 'Speed', title: 'Point Run', icon: '⚡' }, { type: 'Rest', title: '휴식', icon: '🛌' }, { type: 'Long', title: 'LSD', icon: '🏔️' }, { type: 'Rest', title: '휴식', icon: '🛌' }, { type: 'Rest', title: '휴식', icon: '🛌' } ];
-            } else if(freq >= 5) { p[1] = {type:'Medium',title:'Steady Run',icon:'🐎'}; }
-
-            let speedType = 'Tempo';
-            if(phase === 'Base') speedType = 'Fartlek';
-            else if(phase === 'Build') speedType = 'Tempo';
-            else if(phase === 'Peak') speedType = 'Interval'; 
-            else speedType = 'TaperPace';
-            
-            p.forEach(item => { if(item.type === 'Speed') item.type = speedType; });
+            if(state.freq===3) {
+                p = [ {type:'Easy', title:'Easy Run', icon:'🏃‍♂️'}, {type:'Rest', title:'휴식', icon:'🛌'}, {type:'Speed', title:'Point', icon:'⚡'},
+                {type:'Rest', title:'휴식', icon:'🛌'}, {type:'Long', title:'LSD', icon:'🏔️'}, {type:'Rest', title:'휴식', icon:'🛌'}, {type:'Rest', title:'휴식', icon:'🛌'} ];
+            } else if(state.freq===5) p[1] = {type:'Medium', title:'Steady', icon:'🐎'};
 
             return p.map(d => {
-                let desc="", tag="", why="", how="", caution="";
-                if(d.type === 'Rest') { desc="완전 휴식"; tag="Recovery"; why="근육 회복 및 성장 (초과보상)"; how=`<ul><li>아무 운동도 하지 않고 쉽니다.</li><li>수면 시간을 평소보다 30분~1시간 늘리세요.</li><li>가벼운 스트레칭이나 폼롤러 마사지는 좋습니다.</li></ul>`; caution="죄책감 갖지 말고 푹 쉬세요."; }
-                else if(d.type === 'Easy') { let dkm = isFull ? (phase==='Peak'?'10km':'8km') : '6km'; desc=`조깅 ${dkm} @ ${userPaces.easy}`; tag="Zone 2"; why="유산소 기초 체력 향상 (부상 없이 거리 늘리기)"; how=`<ul><li><strong>워밍업:</strong> 5분 빠르게 걷기</li><li><strong>본운동:</strong> ${dkm}를 <strong>${userPaces.easy}</strong> 페이스로 달립니다.<br>옆 사람과 편안하게 대화할 수 있는 속도여야 합니다.</li><li><strong>쿨다운:</strong> 5분 천천히 걷기</li></ul>`; caution="숨이 차면 페이스를 더 늦추세요. 걷는 것보다 아주 조금 빠른 정도도 괜찮습니다."; }
-                else if(d.type === 'Wed') { desc="보강운동 30분 or 조깅 5km"; tag="Cross"; why="러닝에 필요한 코어 근육 강화 및 부상 방지"; how=`<ul><li><strong>옵션 A (근력):</strong> 스쿼트 15회x3세트, 런지 10회x3세트, 플랭크 30초x3세트</li><li><strong>옵션 B (러닝):</strong> 몸이 가볍다면 <strong>${userPaces.easy}</strong>보다 더 느리게 5km 조깅</li></ul>`; caution="근육통이 심하면 옵션 A, B 모두 건너뛰고 쉬세요."; }
-                else if(d.type === 'Medium') { let dkm = isFull ? (phase==='Peak'?'15km':'12km') : '10km'; desc=`지속주 ${dkm} @ ${userPaces.steady}`; tag="Aerobic"; why="중상급자를 위한 지구력 강화"; how=`<ul><li><strong>워밍업:</strong> 1km 아주 느린 조깅</li><li><strong>본운동:</strong> ${dkm}를 <strong>${userPaces.steady}</strong> 페이스로 일정하게 밉니다.<br>조깅보다는 빠르고 헉헉거릴 정도는 아닌 '묵직한' 느낌입니다.</li><li><strong>쿨다운:</strong> 1km 걷기</li></ul>`; caution="초반에 너무 빨리 달리지 않도록 주의하세요."; }
-                else if(d.type === 'Fartlek') { d.title = "Fartlek"; d.icon = "💨"; desc = "변속주 40분"; tag = "Zone 3"; why="스피드에 대한 두려움을 없애고 심폐기능 자극"; how=`<ul><li><strong>워밍업:</strong> 10분 아주 천천히 조깅</li><li><strong>본운동 (6세트):</strong><br> - 2분 빠르게 (대화 불가능, 숨이 참)<br> - 3분 느리게 (호흡 정리하며 천천히 조깅)</li><li><strong>쿨다운:</strong> 10분 아주 천천히 조깅</li></ul>`; caution="빠르게 달릴 때 전력질주(100%)가 아닙니다. 80~90% 힘으로 달리세요."; }
-                else if(d.type === 'Tempo') { d.title = "Threshold"; d.icon = "🔥"; let dist = isFull? (week%2==0?'10km':'12km') : '8km'; desc = `템포런 ${dist} @ ${userPaces.threshold}`; tag = "Zone 4"; why="젖산 역치(지치지 않는 한계 속도) 향상"; how=`<ul><li><strong>워밍업:</strong> 3km 조깅 + 짧은 질주 3회</li><li><strong>본운동:</strong> ${dist}를 <strong>${userPaces.threshold}</strong> 페이스로 꾸준히 유지합니다.<br>'힘들지만 30분은 버틸 수 있다'는 느낌입니다.</li><li><strong>쿨다운:</strong> 2km 아주 느린 조깅</li></ul>`; caution="페이스가 들쭉날쭉하면 효과가 없습니다. 시계를 자주 확인하세요."; }
-                else if(d.type === 'Interval') { d.title = "Interval"; d.icon = "⚡"; desc = "1km 인터벌 x 5회"; tag = "Zone 5"; why="최대 산소 섭취량(VO2max) 극대화 (엔진 업그레이드)"; how=`<ul><li><strong>워밍업:</strong> 3km 조깅 + 스트레칭 꼼꼼히</li><li><strong>본운동 (5세트):</strong><br> - 1km <strong>${userPaces.interval}</strong>로 질주 (매우 힘듦)<br> - 3분간 걷거나 아주 느리게 뛰며 휴식</li><li><strong>쿨다운:</strong> 3km 아주 느린 조깅</li></ul>`; caution="목표 페이스를 달성하지 못하면 휴식 시간을 늘리세요."; }
-                else if(d.type === 'TaperPace') { d.title = "Marathon Pace"; d.icon = "🎯"; desc = `대회 페이스 ${isFull?'8km':'5km'} @ ${userPaces.marathon}`; tag = "Race Pace"; why="대회 당일 감각 익히기 (페이스 조절 연습)"; how=`<ul><li><strong>워밍업:</strong> 2km 조깅</li><li><strong>본운동:</strong> 목표 대회 페이스(<strong>${userPaces.marathon}</strong>)로 정확하게 달립니다.<br>너무 빠르지도, 느리지도 않게 제어하세요.</li><li><strong>쿨다운:</strong> 1km 걷기</li></ul>`; caution="컨디션이 좋다고 더 빨리, 더 많이 뛰면 안 됩니다."; }
-                else if(d.type === 'Long') { let lDist = isFull ? (phase==='Base'?'20km':(phase==='Build'?'26km':(phase==='Peak'?'32km':'15km'))) : '15km'; desc = `LSD ${lDist}`; tag = "Endurance"; why="지방을 에너지로 쓰는 능력 배양 & 정신력 강화"; how=`<ul><li><strong>준비물:</strong> 물, 에너지젤 2~3개</li><li><strong>본운동:</strong> <strong>${userPaces.easy}</strong> 페이스로 ${lDist} 완주가 목표입니다.</li><li>속도보다 '멈추지 않고 계속 달리는 것'이 중요합니다.</li></ul>`; caution="중간에 힘들면 걷지 말고 아주 느리게 뛰세요 (제자리 뛰기 수준이라도 OK)."; }
-                else if(d.type === 'Recovery') { desc = `회복 조깅 5km @ ${userPaces.recovery}`; tag = "Zone 1"; why="혈액 순환을 통해 근육 피로 물질 제거"; how=`<ul><li><strong>방법:</strong> <strong>${userPaces.recovery}</strong> 페이스로 아주 가볍게 뜁니다.</li><li>옆 사람과 노래를 부를 수 있을 정도로 편해야 합니다.</li><li>절대 숨이 차면 안 됩니다.</li></ul>`; caution="이 훈련을 빠르게 하면 부상이 옵니다. 느림의 미학을 즐기세요."; }
-                return { ...d, desc, tag, why, how, caution };
+                let desc="", why="", how="", caution="";
+                if(d.type==='Rest') { desc="완전 휴식"; why="회복"; how="푹 쉬세요"; caution="운동 금지"; }
+                else if(d.type==='Easy') { desc=`조깅 ${isFull?'8km':'5km'} @ ${userPaces.easy}`; why="유산소 베이스"; how="대화 가능한 속도"; caution="오버페이스 금지"; }
+                else if(d.type==='Wed') { desc="보강운동 or 조깅"; why="코어 강화"; how="스쿼트/플랭크"; caution="무리 금지"; }
+                else if(d.type==='Medium') { desc=`지속주 ${isFull?'12km':'8km'} @ ${userPaces.steady}`; why="지구력"; how="일정하게"; caution="자세 유지"; }
+                else if(d.type==='Long') { desc=`LSD ${isFull?'25km':'15km'}`; why="지방 대사"; how=`천천히(${userPaces.easy}) 길게`; caution="급수 필수"; }
+                else if(d.type==='Recovery') { desc=`회복 ${userPaces.recovery}`; why="피로 제거"; how="아주 천천히"; caution="산책하듯"; }
+                else if(d.type==='Speed') {
+                    if(phase==='Base') { d.title="Fartlek"; d.type="Fartlek"; d.icon="💨"; desc="변속주 40분"; how="2분 질주 + 3분 조깅 x 6"; }
+                    else if(phase==='Peak') { d.title="Interval"; d.type="Interval"; d.icon="⚡"; desc="1km x 5회"; how=`${userPaces.interval} 페이스로 질주`; }
+                    else { d.title="Threshold"; d.type="Tempo"; d.icon="🔥"; desc=`템포 ${isFull?'10km':'6km'}`; how=`${userPaces.threshold} 유지`; }
+                }
+                return { ...d, desc, why, how, caution };
             });
         }
+
+        function showDetail(plan, id) {
+            document.getElementById('detailBox').style.display='block';
+            document.getElementById('dIcon').innerText=plan.icon; document.getElementById('dTitle').innerText=plan.title; document.getElementById('dSubtitle').innerText=plan.desc;
+            document.getElementById('dWhy').innerText=plan.why; document.getElementById('dHow').innerHTML=plan.how; document.getElementById('dCaution').innerText=plan.caution;
+            currentSelectedPlan = { ...plan, id };
+            
+            const isDone = state.completed[id];
+            const btn = document.getElementById('completeBtn');
+            if(isDone) { btn.innerText = "✅ 훈련 완료됨 (피드백 완료)"; btn.classList.add('disabled'); btn.onclick = null; } 
+            else { btn.innerText = "✅ 훈련 완료 및 피드백"; btn.classList.remove('disabled'); btn.onclick = openFeedbackModal; }
+        }
+
+        function openFeedback(id) { selectedPlanId = id; document.getElementById('feedbackModal').style.display = 'flex'; document.querySelectorAll('.rpe-btn').forEach(b=>b.classList.remove('selected')); selectedRPEValue = 0; }
+        function closeFeedbackModal() { document.getElementById('feedbackModal').style.display = 'none'; }
+        function selectRPE(v, el) { selectedRPEValue = v; document.querySelectorAll('.rpe-btn').forEach(b=>b.classList.remove('selected')); el.classList.add('selected'); }
+        
+        function submitFeedback() {
+            if(!selectedRPEValue) return alert("선택해주세요");
+            state.completed[selectedPlanId || currentSelectedPlan.id] = selectedRPEValue;
+            
+            let msg = "기록되었습니다."; let changed = false;
+            if(selectedRPEValue === 5) { state.paceFactor *= 1.02; msg="⚠️ 훈련 강도를 하향 조정했습니다."; changed=true; }
+            if(selectedRPEValue === 1) { state.paceFactor *= 0.99; msg="💪 훈련 강도를 상향 조정했습니다."; changed=true; }
+            
+            if(changed) { recalcPaces(); updatePaceCards(); }
+            closeFeedbackModal(); showToast(msg); renderDailyGrid(state.viewWeek);
+        }
+
+        function showToast(m) { const t=document.getElementById('toast'); t.innerText=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
+
+        function renderDashboard() {
+            const weeklyVol = state.targetDist > 30 ? [40, 45, 38, 50, 55, 42, 60, 30, 65, 70, 45, 20] : [20, 25, 22, 30, 35, 25, 40, 20, 45, 50, 30, 15];
+            document.getElementById('dashWeeklyDist').innerText = weeklyVol[0] + " km";
+            new Chart(document.getElementById('volumeChart'), { type: 'bar', data: { labels: Array.from({length:12},(_,i)=>`W${i+1}`), datasets: [{label:'Weekly Volume (km)', data: weeklyVol, backgroundColor:'#007AFF'}] }, options: { responsive:true, maintainAspectRatio:false } });
+            new Chart(document.getElementById('intensityChart'), { type: 'doughnut', data: { labels: ['Easy','Tempo','Interval','Long'], datasets: [{data: [60, 15, 5, 20], backgroundColor:['#34C759','#FF9500','#FF3B30','#333']}] }, options: { responsive:true, maintainAspectRatio:false } });
+        }
+
+        function updateStrategy(type) {
+            const totalSec = state.targetSec; const dist = state.targetDist;
+            let pace = totalSec / dist; let html = `<tr><th>구간</th><th>페이스</th><th>누적 시간</th><th>전략</th></tr>`;
+            let segment = dist > 30 ? 10 : 5; let currentSec = 0;
+            for(let d=0; d<dist; d+=segment) {
+                let segDist = Math.min(segment, dist-d); let segPace = pace;
+                if(type==='Negative') segPace = d < dist/2 ? pace*1.02 : pace*0.98;
+                if(type==='Positive') segPace = d < dist/2 ? pace*0.97 : pace*1.05;
+                let segTime = segPace * segDist; currentSec += segTime;
+                html += `<tr><td>${d}~${Math.round(d+segDist)}km</td><td>${formatPace(segPace)}</td><td>${secToTime(currentSec)}</td><td>${d>25?'<span class="gel-point">GEL</span> 스퍼트':'페이스 유지'}</td></tr>`;
+            }
+            document.getElementById('splitTable').innerHTML = html;
+            document.querySelectorAll('.preset-group .preset-btn').forEach(b=>b.classList.remove('active'));
+        }
+
+        function switchView(id){
+            ['view-home','view-summary','view-schedule','view-dashboard','view-strategy'].forEach(v=>{const el = document.getElementById(v); if(el) {el.classList.add('hidden'); el.classList.remove('fade-in');}});
+            document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('fade-in'); window.scrollTo(0,0);
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            const tabMap = {'view-summary':0, 'view-schedule':1, 'view-dashboard':2, 'view-strategy':3};
+            if(tabMap[id]!==undefined) document.querySelectorAll('.nav-tab')[tabMap[id]].classList.add('active');
+        }
+        function isSameDay(d1, d2) { return d1.getFullYear()===d2.getFullYear() && d1.getMonth()===d2.getMonth() && d1.getDate()===d2.getDate(); }
     </script>
 </body>
 </html>
