@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marathon AI Coach v3.7.1</title>
+    <title>Marathon AI Coach v3.8</title>
     <style>
         :root {
             --primary: #007AFF;
@@ -206,7 +206,7 @@
     <div class="container">
         <!-- HEADER -->
         <header>
-            <span class="badge">AI COACH v3.7.1</span>
+            <span class="badge">AI COACH v3.8</span>
             <h1>Marathon Planner</h1>
             <p class="subtitle" id="pageSubtitle">나만의 맞춤형 훈련 프로그램 설정</p>
         </header>
@@ -229,7 +229,11 @@
                     </div>
                     <label style="margin-top:25px;">훈련 기간 선택</label>
                     <div class="preset-group"><button type="button" class="preset-btn" id="btn8" onclick="selectPreset(8, this)">8주</button><button type="button" class="preset-btn active" id="btn12" onclick="selectPreset(12, this)">12주</button><button type="button" class="preset-btn" id="btn16" onclick="selectPreset(16, this)">16주</button><button type="button" class="preset-btn" id="btnAuto" onclick="selectPreset('auto', this)">대회일까지</button></div>
-                    <div class="row" style="margin-bottom: 25px;"><div class="col"><label>대회 날짜</label><input type="date" id="raceDate" onchange="enableCustomMode()"></div></div>
+                    
+                    <div class="row" style="margin-bottom: 15px;">
+                        <div class="col"><label>훈련 시작일 (Start)</label><input type="date" id="startDate" onchange="updateAll()"></div>
+                        <div class="col"><label>대회 날짜 (Race)</label><input type="date" id="raceDate" onchange="enableCustomMode()"></div>
+                    </div>
                     
                     <div id="goalFeedback" class="feedback-box"><span>🎯 기록을 입력하면 AI가 분석해드립니다.</span></div>
                     
@@ -265,6 +269,9 @@
             </div>
             <h4 class="section-title">📚 Training Glossary (훈련 용어집)</h4>
             <div class="guide-list">
+                <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">🩹</span><span class="guide-title">Recovery (회복주)</span><span class="guide-tag">Zone 1</span></div><div class="guide-desc">고강도 훈련 다음 날, 몸에 쌓인 피로를 제거하기 위해 <strong>아주 천천히</strong> 달립니다. 숨이 전혀 차지 않아야 합니다.</div></div>
+                <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">🏃‍♂️</span><span class="guide-title">Easy Run / LSD (조깅)</span><span class="guide-tag">Zone 2</span></div><div class="guide-desc">대화가 가능한 편안한 속도입니다. LSD는 이 속도로 <strong>오래, 멀리</strong> 달려서 지방 대사 효율을 높이는 훈련입니다.</div></div>
+                <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">🐎</span><span class="guide-title">Steady Run (지속주)</span><span class="guide-tag">Zone 3</span></div><div class="guide-desc">조깅보다 빠르고 대회 페이스보다 약간 느린, <strong>기분 좋은 묵직함</strong>을 유지하며 달립니다. 지구력의 핵심입니다.</div></div>
                 <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">💨</span><span class="guide-title">Fartlek (파틀렉)</span><span class="guide-tag">Zone 3-5</span></div><div class="guide-desc">"스피드 플레이"라는 뜻입니다. 정해진 형식 없이 지형지물이나 기분에 따라 빠르게 달렸다가 천천히 달리기를 반복합니다.</div></div>
                 <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">🔥</span><span class="guide-title">Threshold (역치주)</span><span class="guide-tag">Zone 4</span></div><div class="guide-desc">"편안하게 힘들다"는 강도입니다. 젖산이 쌓이는 시점을 늦춰주어 스피드 지구력을 기릅니다.</div></div>
                 <div class="guide-item"><div class="guide-header"><span style="font-size:1.2rem;">⚡</span><span class="guide-title">Interval (인터벌)</span><span class="guide-tag">Zone 5</span></div><div class="guide-desc">최대 심박수에 도달하는 질주와 불완전 휴식을 반복합니다. 엔진(심폐기능)의 크기를 키우는 가장 강력한 훈련입니다.</div></div>
@@ -329,8 +336,19 @@
 
     <script>
         let currentTrainingWeeks = 12; let userPaces = {}; let userFreq = 4; let globalTargetDist = 42.195; let currentViewWeek = 1;
+        let globalStartDate = new Date(); // Global Start Date
 
-        window.onload = function() { initTimeSelects(); selectPreset(12, document.getElementById('btn12')); updateAll(); }
+        window.onload = function() { 
+            initTimeSelects(); 
+            // Set Start Date to Today by default
+            document.getElementById('startDate').valueAsDate = new Date();
+            // Set Race Date to 3 months later
+            const rd = new Date(); rd.setMonth(rd.getMonth()+3); 
+            document.getElementById('raceDate').valueAsDate = rd;
+            
+            selectPreset(12, document.getElementById('btn12')); 
+            updateAll(); 
+        }
 
         function initTimeSelects() {
             const createOpts = (el, max) => { for(let i=0; i<=max; i++) el.add(new Option(i, i)); };
@@ -354,7 +372,6 @@
             if(p(8)<=d.targetSec*1.01)return 8; if(p(12)<=d.targetSec*1.01)return 12; return 16;
         }
         
-        // [FIXED] Added safety check for badge element
         function updateRecommendationBadge(w){
             document.querySelectorAll('.rec-badge').forEach(b => { if(b && b.style) b.style.display='none'; });
             let btnId = w===8?"btn8":(w===12?"btn12":"btn16");
@@ -378,13 +395,43 @@
         }
         function selectPreset(w,b){
             document.querySelectorAll('.preset-btn').forEach(x=>x.classList.remove('active')); if(b)b.classList.add('active');
-            if(w==='auto'){const v=document.getElementById('raceDate').value; if(v){const df=Math.ceil((new Date(v)-new Date())/86400000);currentTrainingWeeks=Math.floor(df/7);}else{currentTrainingWeeks=12;}}
-            else{currentTrainingWeeks=w; const d=new Date();d.setDate(d.getDate()+(w*7));document.getElementById('raceDate').valueAsDate=d;}
+            
+            // Start Date logic
+            const sVal = document.getElementById('startDate').value;
+            const startD = sVal ? new Date(sVal) : new Date();
+
+            if(w==='auto'){
+                const v=document.getElementById('raceDate').value;
+                if(!v){
+                    // Default if no race date: 3 months from start
+                    const d=new Date(startD); d.setMonth(d.getMonth()+3); 
+                    document.getElementById('raceDate').valueAsDate=d; 
+                    currentTrainingWeeks=12;
+                } else {
+                    const raceD = new Date(v);
+                    const diff=Math.ceil((raceD - startD)/(86400000));
+                    currentTrainingWeeks=Math.max(4, Math.floor(diff/7)); // Min 4 weeks
+                }
+            } else {
+                currentTrainingWeeks=w; 
+                const d=new Date(startD); d.setDate(d.getDate()+(w*7)); 
+                document.getElementById('raceDate').valueAsDate=d;
+            }
             updateAll();
         }
         function enableCustomMode(){
             document.querySelectorAll('.preset-btn').forEach(x=>x.classList.remove('active')); document.getElementById('btnAuto').classList.add('active');
-            const v=document.getElementById('raceDate').value; if(v){const diff=Math.ceil((new Date(v)-new Date())/86400000);currentTrainingWeeks=Math.max(1,Math.floor(diff/7));updateAll();}
+            
+            const sVal = document.getElementById('startDate').value;
+            const startD = sVal ? new Date(sVal) : new Date();
+            const v=document.getElementById('raceDate').value; 
+            
+            if(v){
+                const raceD = new Date(v);
+                const diff=Math.ceil((raceD - startD)/86400000);
+                currentTrainingWeeks=Math.max(1,Math.floor(diff/7));
+                updateAll();
+            }
         }
         function formatPace(s){const m=Math.floor(s/60),sc=Math.floor(s%60);return `${m}'${sc.toString().padStart(2,'0')}"`;}
         function secondsToTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return (h>0?h+":":"")+m.toString().padStart(2,'0')+":"+sc.toString().padStart(2,'0');}
@@ -413,8 +460,17 @@
                 alert(`목표 기록을 자동 설정했습니다: ${h}시간 ${m}분 ${s}초`);
             }
 
-            const diffDays = Math.ceil((new Date(document.getElementById('raceDate').value)-new Date())/86400000);
-            const totalWeeks = Math.floor(diffDays/7);
+            const sVal = document.getElementById('startDate').value;
+            globalStartDate = sVal ? new Date(sVal) : new Date();
+            
+            const rVal = document.getElementById('raceDate').value;
+            const raceD = rVal ? new Date(rVal) : new Date();
+            
+            const diffDays = Math.ceil((raceD - globalStartDate)/86400000);
+            
+            if(diffDays <= 0) { alert("대회 날짜는 시작일 이후여야 합니다."); return; }
+            
+            const totalWeeks = Math.floor(diffDays / 7);
             userFreq = i.freq; globalTargetDist = i.targetDist;
 
             const mp = i.targetSec/i.targetDist;
@@ -477,14 +533,26 @@
         function renderDailyGrid(wNum){
             const grid=document.getElementById('dailyGrid'); grid.innerHTML="";
             const phase=getPhaseName(wNum,currentTrainingWeeks);
-            const today=new Date(); const start=new Date(today); start.setDate(today.getDate()+(wNum-1)*7);
-            const days=['월','화','수','목','금','토','일'];
+            
+            // Calculate Start Date of this week
+            const startDay = new Date(globalStartDate); 
+            startDay.setDate(globalStartDate.getDate() + (wNum-1)*7);
+            
+            const days=['일','월','화','수','목','금','토']; // Index doesn't matter much as we use Date object
+            
+            // Get Plan Array (Rotated based on Requirement: Day 1 = Easy)
             const plans=getWeeklyPlan(wNum,phase,userFreq,globalTargetDist);
             
             plans.forEach((p,i)=>{
-                const d=new Date(start); d.setDate(start.getDate()+i);
-                const dStr=`${d.getMonth()+1}.${d.getDate()} (${days[i]})`;
-                const isToday=(wNum===1 && i===0);
+                const d=new Date(startDay); d.setDate(startDay.getDate()+i);
+                // day name from date
+                const dayName = days[d.getDay()]; 
+                const dStr=`${d.getMonth()+1}.${d.getDate()} (${dayName})`;
+                
+                // Today Check
+                const today = new Date();
+                const isToday = (d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear());
+
                 const card=document.createElement('div');
                 card.className=`day-card type-${p.type} ${isToday?'today':''}`;
                 card.onclick=(e)=>{document.querySelectorAll('.day-card').forEach(x=>x.classList.remove('active')); e.currentTarget.classList.add('active'); showDetail(p);};
@@ -504,20 +572,41 @@
             document.getElementById('dWhy').innerText=p.why; document.getElementById('dHow').innerHTML=p.how; document.getElementById('dCaution').innerText=p.caution;
         }
 
+        // --- NEW LOGIC: Dynamic Schedule starting with Easy Run ---
         function getWeeklyPlan(week, phase, freq, distType) {
             const isFull = distType > 30; const isHalf = distType > 15 && distType < 30;
+            
+            // Standard Order: Easy -> Cross -> Speed -> Rest -> Long -> Recovery -> Rest
+            // This ensures Day 1 (Start Date) is always Easy Run.
+            
             let p = [
-                { type: 'Rest', title: '휴식', icon: '🛌' },
-                { type: 'Easy', title: 'Easy Run', icon: '🏃‍♂️' },
-                { type: 'Wed', title: '보강/Easy', icon: '🧘' },
-                { type: 'Speed', title: 'Point Run', icon: '⚡' }, 
-                { type: 'Rest', title: '휴식', icon: '🛌' },
-                { type: 'Long', title: 'LSD', icon: '🏔️' },
-                { type: 'Recovery', title: 'Recovery', icon: '🩹' }
+                { type: 'Easy', title: 'Easy Run', icon: '🏃‍♂️' },      // Day 1
+                { type: 'Wed', title: '보강/Easy', icon: '🧘' },      // Day 2
+                { type: 'Speed', title: 'Point Run', icon: '⚡' },    // Day 3
+                { type: 'Rest', title: '휴식', icon: '🛌' },          // Day 4
+                { type: 'Long', title: 'LSD', icon: '🏔️' },          // Day 5
+                { type: 'Recovery', title: 'Recovery', icon: '🩹' },  // Day 6
+                { type: 'Rest', title: '휴식', icon: '🛌' }           // Day 7
             ];
             
-            if(freq === 3) { p[2] = {type:'Rest',title:'휴식',icon:'🛌'}; p[6] = {type:'Rest',title:'휴식',icon:'🛌'}; }
-            else if(freq >= 5) { p[2] = {type:'Medium',title:'Steady Run',icon:'🐎'}; }
+            // Freq Adjust (Removing sessions for lower freq)
+            if(freq === 3) { 
+                // Keep: Easy, Speed, Long. Remove: Cross, Recovery. 
+                // New 3-day pattern on 7 day grid: Easy, Rest, Speed, Rest, Long, Rest, Rest
+                p = [
+                    { type: 'Easy', title: 'Easy Run', icon: '🏃‍♂️' },
+                    { type: 'Rest', title: '휴식', icon: '🛌' },
+                    { type: 'Speed', title: 'Point Run', icon: '⚡' },
+                    { type: 'Rest', title: '휴식', icon: '🛌' },
+                    { type: 'Long', title: 'LSD', icon: '🏔️' },
+                    { type: 'Rest', title: '휴식', icon: '🛌' },
+                    { type: 'Rest', title: '휴식', icon: '🛌' }
+                ];
+            }
+            else if(freq >= 5) { 
+                // Day 2 becomes Steady Run instead of Cross/Easy
+                p[1] = {type:'Medium',title:'Steady Run',icon:'🐎'}; 
+            }
 
             let speedType = 'Tempo';
             if(phase === 'Base') speedType = 'Fartlek';
@@ -525,7 +614,17 @@
             else if(phase === 'Peak') speedType = 'Interval'; 
             else speedType = 'TaperPace';
 
-            p[3].type = speedType; 
+            // Find the Speed slot (It's index 2 in standard, index 2 in freq3)
+            // But let's check type to be safe or rely on index.
+            // In standard array (freq4/5), Speed is index 2.
+            // In freq3 array, Speed is index 2.
+            // So p[2] is always Speed slot in this new arrangement? No wait.
+            // Std: Easy, Cross, Speed (Index 2)
+            // Freq3: Easy, Rest, Speed (Index 2)
+            
+            p.forEach(item => {
+                if(item.type === 'Speed') item.type = speedType;
+            });
 
             return p.map(d => {
                 let desc="", tag="", why="", how="", caution="";
