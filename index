@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marathon AI Coach v2.9</title>
+    <style>
+        :root {
+            --primary: #007AFF;
+            --secondary: #5856D6;
+            --success: #34C759;
+            --warning: #FF9500;
+            --danger: #FF3B30;
+            --bg: #F2F2F7;
+            --card: #FFFFFF;
+            --text-main: #1c1c1e;
+            --text-sub: #8e8e93;
+            --info-bg: #EEF1F5;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--card);
+            border-radius: 24px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            padding: 30px;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+            min-height: 950px;
+        }
+
+        /* 공통 애니메이션 */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .hidden { display: none !important; }
+
+        /* 헤더 스타일 */
+        header { text-align: center; margin-bottom: 25px; }
+        .badge { background-color: #E5E5EA; color: var(--text-sub); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
+        h1 { margin: 10px 0 5px 0; font-size: 1.8rem; letter-spacing: -0.5px; }
+        .subtitle { font-size: 0.95rem; color: var(--text-sub); margin: 0; }
+
+        /* 폼 요소 */
+        .form-section { margin-bottom: 25px; border-bottom: 1px solid #f2f2f7; padding-bottom: 20px; }
+        .form-section:last-of-type { border-bottom: none; }
+        .section-title { font-size: 0.9rem; font-weight: 600; color: var(--text-sub); margin-bottom: 10px; text-transform: uppercase; }
+        .row { display: flex; gap: 15px; }
+        .col { flex: 1; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; }
+        
+        select, input[type="date"] {
+            width: 100%; padding: 14px; border: 1px solid #d1d1d6; border-radius: 12px; font-size: 1rem;
+            background: #fff; box-sizing: border-box; -webkit-appearance: none;
+        }
+        select:focus, input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,122,255,0.1); }
+
+        /* 커스텀 시간 선택기 (Scroll Box) */
+        .time-picker-group { display: flex; gap: 5px; align-items: center; }
+        .time-select-wrapper { flex: 1; position: relative; }
+        .time-select-wrapper select { text-align: center; padding-right: 20px; }
+        .time-label { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: #8e8e93; pointer-events: none; }
+
+        /* 추천 프로그램 버튼 그룹 */
+        .preset-group { display: flex; gap: 8px; margin-bottom: 15px; }
+        .preset-btn {
+            flex: 1; padding: 12px 5px; border: 1px solid #d1d1d6; background: white; border-radius: 10px;
+            font-size: 0.85rem; font-weight: 600; color: #666; cursor: pointer; transition: 0.2s; line-height: 1.3; position: relative;
+        }
+        .preset-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .preset-btn:hover:not(.active) { background: #f2f2f7; }
+        
+        /* 추천 뱃지 - 애니메이션 추가 */
+        .rec-badge {
+            position: absolute; top: -10px; right: -5px; background: #FF3B30; color: white;
+            font-size: 0.65rem; padding: 3px 8px; border-radius: 12px; display: none; font-weight: 800;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 2px solid #fff;
+            animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+
+        /* 피드백 메시지 박스 */
+        .feedback-box {
+            background: #f2f2f7; padding: 15px; border-radius: 12px; margin-top: 10px;
+            font-size: 0.9rem; display: flex; flex-direction: column; gap: 5px;
+            border-left: 4px solid #ccc; transition: all 0.3s;
+        }
+        .feedback-box.safe { background: #e8fbf0; border-left-color: var(--success); color: #0c5122; }
+        .feedback-box.challenge { background: #fff8e6; border-left-color: var(--warning); color: #7a4f01; }
+        .feedback-box.danger { background: #feebeb; border-left-color: var(--danger); color: #c90a00; }
+        
+        .rec-time-display { font-size: 1.1rem; font-weight: 800; color: var(--primary); margin-top: 5px; }
+
+        /* 과학적 근거 안내 박스 */
+        .science-info {
+            background-color: var(--info-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: #555;
+            line-height: 1.5;
+            border: 1px solid #E1E4E8;
+        }
+        .science-info strong { color: #333; font-weight: 700; }
+        .science-info ul { margin: 5px 0 0 0; padding-left: 20px; }
+        .science-info li { margin-bottom: 4px; }
+
+        /* 메인 버튼 (CTA) */
+        button.cta {
+            width: 100%; background-color: var(--primary); color: white; padding: 16px; border: none; border-radius: 16px;
+            font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,122,255,0.3);
+            margin-top: 10px;
+        }
+        button.cta:hover { background-color: #0062cc; transform: translateY(-2px); }
+        button.secondary-btn {
+            width: 100%; background-color: transparent; color: #8e8e93; padding: 12px; border: none; font-weight: 600;
+            cursor: pointer; margin-top: 10px;
+        }
+
+        /* --- [View 2: Summary] 스타일 --- */
+        .summary-card { background: #F2F2F7; padding: 25px; border-radius: 20px; text-align: center; margin-bottom: 25px; }
+        .big-stat { font-size: 2.5rem; font-weight: 800; color: var(--primary); display: block; margin-bottom: 5px; }
+        .sub-stat { font-size: 1rem; color: #666; }
+        .summary-info-row { display: flex; justify-content: center; gap: 15px; margin-top: 15px; color: #666; font-size: 0.9rem; }
+        
+        .pace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 30px; }
+        .pace-card { background: white; padding: 15px; border-radius: 12px; border: 1px solid #e5e5ea; }
+        .pace-label { font-size: 0.8rem; color: #8e8e93; font-weight: 700; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+        .pace-value { font-size: 1.1rem; font-weight: 700; color: #1c1c1e; }
+        .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+        /* --- [View 3: Detail] 스타일 --- */
+        .timeline-container { position: relative; padding-left: 20px; border-left: 2px solid #e5e5ea; margin-left: 10px; }
+        .phase-card {
+            margin-bottom: 20px; padding: 20px; border-radius: 16px; color: white; position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .phase-base { background: linear-gradient(135deg, #34C759, #248A3D); }
+        .phase-build { background: linear-gradient(135deg, #FF9500, #CC7700); }
+        .phase-peak { background: linear-gradient(135deg, #FF3B30, #C41C00); }
+        .phase-taper { background: linear-gradient(135deg, #007AFF, #0055B3); }
+
+        .phase-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .phase-name { font-size: 1.1rem; font-weight: 800; }
+        .phase-weeks { background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; }
+        .phase-desc { font-size: 0.9rem; opacity: 0.95; line-height: 1.4; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- HEADER -->
+        <header>
+            <span class="badge">AI COACH v2.9</span>
+            <h1>Marathon Planner</h1>
+            <p class="subtitle" id="pageSubtitle">나만의 맞춤형 훈련 프로그램 설정</p>
+        </header>
+
+        <!-- [VIEW 1] 입력 화면 -->
+        <div id="view-home" class="fade-in">
+            <form id="runnerForm">
+                
+                <!-- 1. 기량 정보 -->
+                <div class="form-section">
+                    <div class="section-title">1. Current Fitness (현재 기량)</div>
+                    <div class="row">
+                        <div class="col" style="flex: 0.8;">
+                            <label>최근 달린 거리</label>
+                            <select id="currentDist" onchange="updateAll()">
+                                <option value="5">5km</option>
+                                <option value="10" selected>10km</option>
+                                <option value="21.0975">하프</option>
+                                <option value="42.195">풀코스</option>
+                            </select>
+                        </div>
+                        <div class="col" style="flex: 1.2;">
+                            <label>최근 기록</label>
+                            <div class="time-picker-group">
+                                <div class="time-select-wrapper">
+                                    <select id="curH" onchange="updateAll()"></select><span class="time-label">h</span>
+                                </div>
+                                <div class="time-select-wrapper">
+                                    <select id="curM" onchange="updateAll()"></select><span class="time-label">m</span>
+                                </div>
+                                <div class="time-select-wrapper">
+                                    <select id="curS" onchange="updateAll()"></select><span class="time-label">s</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 목표 설정 -->
+                <div class="form-section">
+                    <div class="section-title">2. Target Goal (목표 설정)</div>
+                    <div class="row" style="margin-bottom:10px;">
+                        <div class="col" style="flex:0.8">
+                            <label>목표 대회</label>
+                            <select id="targetDist" onchange="updateAll()">
+                                <option value="5">5K</option>
+                                <option value="10">10K</option>
+                                <option value="21.0975">하프</option>
+                                <option value="42.195" selected>풀코스</option>
+                            </select>
+                        </div>
+                        <div class="col" style="flex:1.2">
+                            <label>목표 기록 설정</label>
+                            <div class="time-picker-group">
+                                <div class="time-select-wrapper">
+                                    <select id="tarH" onchange="updateAll()"></select><span class="time-label">h</span>
+                                </div>
+                                <div class="time-select-wrapper">
+                                    <select id="tarM" onchange="updateAll()"></select><span class="time-label">m</span>
+                                </div>
+                                <div class="time-select-wrapper">
+                                    <select id="tarS" onchange="updateAll()"></select><span class="time-label">s</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <label style="margin-top:20px;">훈련 기간 선택</label>
+                    <div class="preset-group">
+                        <button type="button" class="preset-btn" id="btn8" onclick="selectPreset(8, this)">8주<br>(단기)<span class="rec-badge">추천</span></button>
+                        <button type="button" class="preset-btn active" id="btn12" onclick="selectPreset(12, this)">12주<br>(표준)<span class="rec-badge">추천</span></button>
+                        <button type="button" class="preset-btn" id="btn16" onclick="selectPreset(16, this)">16주<br>(심화)<span class="rec-badge">추천</span></button>
+                        <button type="button" class="preset-btn" id="btnAuto" onclick="selectPreset('auto', this)">대회일까지<br>(Auto)</button>
+                    </div>
+                    
+                    <div class="row" style="margin-bottom: 20px;">
+                        <div class="col">
+                            <label>대회 날짜</label>
+                            <input type="date" id="raceDate" onchange="enableCustomMode()">
+                        </div>
+                    </div>
+
+                    <!-- 피드백 메시지 -->
+                    <div id="goalFeedback" class="feedback-box">
+                        <span>🎯 기록을 입력하면 AI가 분석해드립니다.</span>
+                    </div>
+
+                    <!-- 과학적 근거 안내 -->
+                    <div class="science-info">
+                        <strong>📚 과학적 근거 및 안내 (Scientific Basis)</strong>
+                        <ul>
+                            <li><strong>기록 예측:</strong> Peter Riegel의 공식 ($T_2 = T_1 \times (D_2/D_1)^{1.06}$)을 기반으로 산출됩니다. 이는 세계적인 러닝 매거진 'Runner's World'의 표준 예측 모델입니다.</li>
+                            <li><strong>추천 로직:</strong> 8, 12, 16주 각각의 예상 성장폭을 계산하여, 목표 달성이 가능한 <strong>'최소 훈련 기간'</strong>을 추천합니다.</li>
+                        </ul>
+                    </div>
+
+                </div>
+
+                <!-- 3. 빈도 설정 -->
+                <div class="form-section">
+                    <div class="section-title">3. Schedule (훈련 빈도)</div>
+                    <select id="freq" onchange="updateAll()">
+                        <option value="3">주 3회 (유지/건강) - 성장률 낮음</option>
+                        <option value="4" selected>주 4회 (기록향상 권장) - 표준 성장</option>
+                        <option value="5">주 5회 (엘리트/Sub-3) - 성장률 높음</option>
+                    </select>
+                </div>
+
+                <button type="button" class="cta" onclick="generateAndGoToSummary()">프로그램 생성하기</button>
+            </form>
+        </div>
+
+        <!-- [VIEW 2] 요약 화면 -->
+        <div id="view-summary" class="hidden">
+            <div class="summary-card">
+                <span class="sub-stat" id="sumTitle">목표 설정 기록</span>
+                <span class="big-stat" id="sumTargetTime">00:00:00</span>
+                
+                <!-- 요약 정보 행 -->
+                <div class="summary-info-row">
+                    <span><span class="badge" style="background:var(--primary); color:white;">VDOT <span id="sumVdot">00</span></span></span>
+                    <span>훈련기간: <b style="color:#333" id="sumWeeks">00주</b></span>
+                    <span>대회까지: <b style="color:#333" id="sumDday">D-00</b></span>
+                </div>
+            </div>
+
+            <div class="section-title">🏃 Training Paces (목표 달성용)</div>
+            <div class="pace-grid">
+                <div class="pace-card">
+                    <div class="pace-label"><div class="dot" style="background:var(--success)"></div>Easy (조깅)</div>
+                    <div class="pace-value" id="paceEasy">-</div>
+                </div>
+                <div class="pace-card">
+                    <div class="pace-label"><div class="dot" style="background:var(--primary)"></div>Race Pace (목표)</div>
+                    <div class="pace-value" id="paceMarathon">-</div>
+                </div>
+                <div class="pace-card">
+                    <div class="pace-label"><div class="dot" style="background:var(--warning)"></div>Threshold (역치)</div>
+                    <div class="pace-value" id="paceThreshold">-</div>
+                </div>
+                <div class="pace-card">
+                    <div class="pace-label"><div class="dot" style="background:var(--danger)"></div>Interval (스피드)</div>
+                    <div class="pace-value" id="paceInterval">-</div>
+                </div>
+            </div>
+
+            <button type="button" class="cta" onclick="goToDetail()">상세 훈련 내역 보기</button>
+            <button type="button" class="secondary-btn" onclick="goToHome()">조건 다시 설정하기</button>
+        </div>
+
+        <!-- [VIEW 3] 상세 화면 -->
+        <div id="view-detail" class="hidden">
+            <div style="margin-bottom:20px;">
+                <h3 style="margin:0;">📅 주차별 훈련 로드맵</h3>
+                <p style="color:#666; font-size:0.9rem;">
+                    총 <span id="detailTotalWeeks">0</span>주 / <span id="detailTarget"></span> 목표
+                </p>
+            </div>
+
+            <div class="timeline-container" id="timelineArea"></div>
+            <button type="button" class="secondary-btn" onclick="goToSummary()">← 요약 화면으로 돌아가기</button>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let currentTrainingWeeks = 12; // 현재 사용자가 '선택한' 주차
+        let recTrainingWeeks = 12;     // AI가 '추천하는' 주차 (고정)
+
+        window.onload = function() {
+            initTimeSelects();
+            selectPreset(12, document.getElementById('btn12')); // 초기 12주 설정
+            updateAll(); // 초기 분석
+        }
+
+        // --- [Initialization] ---
+        function initTimeSelects() {
+            const createOpts = (el, max) => {
+                for(let i=0; i<=max; i++) el.add(new Option(i, i));
+            };
+            
+            createOpts(document.getElementById('curH'), 9);
+            createOpts(document.getElementById('curM'), 59);
+            createOpts(document.getElementById('curS'), 59);
+            document.getElementById('curM').value = 57;
+
+            createOpts(document.getElementById('tarH'), 9);
+            createOpts(document.getElementById('tarM'), 59);
+            createOpts(document.getElementById('tarS'), 59);
+        }
+
+        // --- [Master Update Function] ---
+        function updateAll() {
+            const inputs = getInputs();
+            if(!inputs) return;
+
+            // 1. 추천 주차 계산 (고정 로직)
+            const recommendation = calculateRecommendation(inputs);
+            updateRecommendationBadge(recommendation);
+
+            // 2. 현재 선택된 주차에 대한 피드백 (가변 로직)
+            updateFeedbackBox(inputs);
+        }
+
+        function getInputs() {
+            const curDist = parseFloat(document.getElementById('currentDist').value);
+            const curH = parseInt(document.getElementById('curH').value) || 0;
+            const curM = parseInt(document.getElementById('curM').value) || 0;
+            const curS = parseInt(document.getElementById('curS').value) || 0;
+            const curSec = (curH*3600) + (curM*60) + curS;
+
+            const targetDist = parseFloat(document.getElementById('targetDist').value);
+            const tarH = parseInt(document.getElementById('tarH').value) || 0;
+            const tarM = parseInt(document.getElementById('tarM').value) || 0;
+            const tarS = parseInt(document.getElementById('tarS').value) || 0;
+            const targetSec = (tarH*3600) + (tarM*60) + tarS;
+
+            const freq = parseInt(document.getElementById('freq').value) || 4;
+
+            if(curSec === 0) return null;
+
+            return { curDist, curSec, targetDist, targetSec, freq };
+        }
+
+        // --- [Logic 1] 추천 계산 ---
+        function calculateRecommendation(data) {
+            const equivalentSec = data.curSec * Math.pow((data.targetDist / data.curDist), 1.06);
+            let freqMultiplier = 1.0;
+            if (data.freq === 3) freqMultiplier = 0.8;
+            else if (data.freq === 5) freqMultiplier = 1.2;
+
+            const baseRate = 0.0025; 
+            const predict = (weeks) => equivalentSec * (1 - (weeks * baseRate * freqMultiplier));
+
+            const pred8 = predict(8);
+            const pred12 = predict(12);
+            
+            if(data.targetSec === 0) return 12;
+
+            const margin = 1.01; 
+            if (pred8 <= data.targetSec * margin) return 8;   
+            if (pred12 <= data.targetSec * margin) return 12; 
+            return 16; 
+        }
+
+        function updateRecommendationBadge(recWeeks) {
+            document.querySelectorAll('.rec-badge').forEach(b => b.style.display = 'none');
+            let btnId = "btn16"; 
+            if(recWeeks === 8) btnId = "btn8";
+            else if(recWeeks === 12) btnId = "btn12";
+            
+            const btn = document.getElementById(btnId);
+            if(btn) {
+                const badge = btn.querySelector('.rec-badge');
+                badge.style.display = 'inline-block';
+                badge.innerText = "AI 추천";
+            }
+        }
+
+        // --- [Logic 2] 피드백 표시 ---
+        function updateFeedbackBox(data) {
+            const equivalentSec = data.curSec * Math.pow((data.targetDist / data.curDist), 1.06);
+            let freqMultiplier = 1.0;
+            if (data.freq === 3) freqMultiplier = 0.8;
+            else if (data.freq === 5) freqMultiplier = 1.2;
+
+            const improvementFactor = currentTrainingWeeks * 0.0025 * freqMultiplier;
+            const predictedSec = equivalentSec * (1 - improvementFactor);
+
+            const ph = Math.floor(predictedSec / 3600);
+            const pm = Math.floor((predictedSec % 3600) / 60);
+            const ps = Math.floor(predictedSec % 60);
+            const recTimeStr = (ph > 0 ? `${ph}시간 ` : "") + `${pm}분 ${ps}초`;
+
+            const box = document.getElementById('goalFeedback');
+            
+            if(data.targetSec === 0) {
+                box.className = "feedback-box";
+                box.innerHTML = `
+                    <span>🤖 선택한 <strong>${currentTrainingWeeks}주</strong> 훈련 시 예상 기록:</span>
+                    <div class="rec-time-display">${recTimeStr}</div>
+                `;
+                return;
+            }
+
+            const diffRatio = (predictedSec - data.targetSec) / predictedSec;
+            let msg = "";
+            let cssClass = "feedback-box";
+
+            if (diffRatio <= -0.02) {
+                msg = `👍 ${currentTrainingWeeks}주는 목표 달성에 아주 충분한 기간입니다.`;
+                cssClass += " safe";
+            } else if (diffRatio <= 0.015) {
+                msg = `👌 ${currentTrainingWeeks}주는 목표 달성에 딱 적절한 기간입니다.`;
+                cssClass += " safe";
+            } else if (diffRatio <= 0.05) {
+                msg = `🔥 ${currentTrainingWeeks}주는 약간 도전적입니다. (성실한 훈련 필수)`;
+                cssClass += " challenge";
+            } else {
+                msg = `⚠️ ${currentTrainingWeeks}주로는 목표 달성이 어렵습니다. 기간을 늘리세요!`;
+                cssClass += " danger";
+            }
+
+            box.className = cssClass;
+            box.innerHTML = `
+                <span>${msg}</span>
+                <div style="font-size:0.85rem; color:#555; margin-top:5px; border-top:1px solid rgba(0,0,0,0.1); padding-top:5px;">
+                    현재 선택(${currentTrainingWeeks}주) 예상: <strong>${recTimeStr}</strong>
+                </div>
+            `;
+        }
+
+        // --- [Interaction] ---
+        function selectPreset(weeks, btn) {
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+
+            if (weeks === 'auto') {
+                const raceDateVal = document.getElementById('raceDate').value;
+                if(!raceDateVal) {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() + 3);
+                    document.getElementById('raceDate').valueAsDate = d;
+                    currentTrainingWeeks = 12; 
+                } else {
+                    const d = new Date(raceDateVal);
+                    const today = new Date();
+                    const diff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+                    currentTrainingWeeks = Math.floor(diff / 7);
+                }
+            } else {
+                currentTrainingWeeks = weeks;
+                const d = new Date();
+                d.setDate(d.getDate() + (weeks * 7));
+                document.getElementById('raceDate').valueAsDate = d;
+            }
+            updateAll(); 
+        }
+
+        function enableCustomMode() {
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btnAuto').classList.add('active');
+            
+            const raceDateVal = document.getElementById('raceDate').value;
+            if(raceDateVal) {
+                const d = new Date(raceDateVal);
+                const today = new Date();
+                const diff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+                currentTrainingWeeks = Math.max(1, Math.floor(diff / 7));
+                updateAll();
+            }
+        }
+
+        // --- [Navigation & Generation] ---
+        function formatPace(sec) {
+            const m = Math.floor(sec / 60);
+            const s = Math.floor(sec % 60);
+            return `${m}'${s.toString().padStart(2,'0')}"`;
+        }
+        function secondsToTime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return (h>0 ? h+":" : "") + m.toString().padStart(2,'0') + ":" + s.toString().padStart(2,'0');
+        }
+
+        function switchView(viewId) {
+            ['view-home', 'view-summary', 'view-detail'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+                document.getElementById(id).classList.remove('fade-in');
+            });
+            const t = document.getElementById(viewId);
+            t.classList.remove('hidden');
+            t.classList.add('fade-in');
+            
+            // 페이지별 타이틀 변경
+            const subtitle = document.getElementById('pageSubtitle');
+            if(viewId === 'view-home') subtitle.innerText = "나만의 맞춤형 훈련 프로그램 설정";
+            else if(viewId === 'view-summary') subtitle.innerText = "과학적 데이터 분석 결과";
+            else if(viewId === 'view-detail') subtitle.innerText = "단계별 훈련 스케줄";
+
+            window.scrollTo(0,0);
+        }
+        function goToHome() { switchView('view-home'); }
+        function goToSummary() { switchView('view-summary'); }
+        function goToDetail() { switchView('view-detail'); }
+
+        function generateAndGoToSummary() {
+            let inputs = getInputs();
+            if(!inputs) { alert("입력 값을 확인해주세요."); return; }
+
+            // [Smart UX] 목표 기록이 0이면 자동 설정
+            if(inputs.targetSec === 0) {
+                // 현재 설정된 값들로 예상 기록 계산
+                const equivalentSec = inputs.curSec * Math.pow((inputs.targetDist / inputs.curDist), 1.06);
+                let freqMultiplier = 1.0;
+                if (inputs.freq === 3) freqMultiplier = 0.8;
+                else if (inputs.freq === 5) freqMultiplier = 1.2;
+
+                const improvementFactor = currentTrainingWeeks * 0.0025 * freqMultiplier;
+                const predictedSec = equivalentSec * (1 - improvementFactor);
+                
+                // inputs 객체 업데이트
+                inputs.targetSec = Math.floor(predictedSec);
+
+                // UI 업데이트 (Select Box 반영)
+                const h = Math.floor(inputs.targetSec / 3600);
+                const m = Math.floor((inputs.targetSec % 3600) / 60);
+                const s = Math.floor(inputs.targetSec % 60);
+                document.getElementById('tarH').value = h;
+                document.getElementById('tarM').value = m;
+                document.getElementById('tarS').value = s;
+
+                // 안내
+                alert(`목표 기록을 입력하지 않아,\n${currentTrainingWeeks}주 훈련 시 예상되는 [${h}시간 ${m}분 ${s}초]로 자동 설정합니다.`);
+            }
+
+            const diffDays = Math.ceil((new Date(document.getElementById('raceDate').value) - new Date()) / (1000 * 60 * 60 * 24));
+            if(isNaN(diffDays) || diffDays <= 0) { alert("대회 날짜를 올바르게 선택해주세요."); return; }
+            
+            const totalWeeks = Math.floor(diffDays / 7);
+
+            // Paces Calculation
+            const targetPaceSec = inputs.targetSec / inputs.targetDist;
+            const paceEasy = targetPaceSec * 1.25; 
+            const paceThreshold = targetPaceSec * 0.92; 
+            const paceInterval = targetPaceSec * 0.86; 
+
+            // VDOT Score
+            const equiv10kSec = inputs.targetSec * Math.pow((10/inputs.targetDist), 1.06);
+            const vdotScore = (1000 / (equiv10kSec/60) * 2.5).toFixed(1);
+
+            let targetLabel = "Full Marathon";
+            if(inputs.targetDist === 5) targetLabel = "5K Race";
+            else if(inputs.targetDist === 10) targetLabel = "10K Race";
+            else if(inputs.targetDist === 21.0975) targetLabel = "Half Marathon";
+
+            // UI Update (View 2)
+            document.getElementById('sumTitle').innerText = `${targetLabel} 목표`;
+            document.getElementById('sumTargetTime').innerText = secondsToTime(inputs.targetSec);
+            document.getElementById('sumVdot').innerText = vdotScore;
+            
+            document.getElementById('sumWeeks').innerText = `${totalWeeks}주`;
+            document.getElementById('sumDday').innerText = `D-${diffDays}`;
+
+            document.getElementById('paceEasy').innerText = formatPace(paceEasy) + "/km";
+            document.getElementById('paceMarathon').innerText = formatPace(targetPaceSec) + "/km";
+            document.getElementById('paceThreshold').innerText = formatPace(paceThreshold) + "/km";
+            document.getElementById('paceInterval').innerText = formatPace(paceInterval) + "/km";
+
+            // Generate Timeline (View 3 Data)
+            renderTimeline(totalWeeks, inputs.freq, inputs.targetDist);
+            document.getElementById('detailTotalWeeks').innerText = totalWeeks;
+            document.getElementById('detailTarget').innerText = targetLabel;
+
+            // Transition
+            goToSummary();
+        }
+
+        function renderTimeline(weeks, freq, targetDist) {
+            const container = document.getElementById('timelineArea');
+            container.innerHTML = "";
+            if (weeks < 4) {
+                container.innerHTML = "<div class='phase-card phase-taper'>기간이 너무 짧습니다. 부상 조심하세요.</div>";
+                return;
+            }
+            let taper = 2;
+            let peak = Math.max(2, Math.floor(weeks * 0.25));
+            let build = Math.max(3, Math.floor(weeks * 0.35));
+            let base = weeks - (taper + peak + build);
+            if (base < 1) { base = 1; build = weeks - (taper + peak + base); }
+
+            let focusText = "";
+            if (targetDist <= 10) focusText = "스피드 및 인터벌";
+            else if (targetDist > 21) focusText = "지구력 및 거리주";
+            else focusText = "지속주";
+
+            const addCard = (type, name, duration, desc) => {
+                const html = `
+                    <div class="phase-card ${type}">
+                        <div class="phase-header"><span class="phase-name">${name}</span><span class="phase-weeks">${duration}주간</span></div>
+                        <div class="phase-desc">${desc}</div>
+                    </div>`;
+                container.innerHTML += html;
+            };
+            addCard('phase-base', '1. Base', base, `Easy Run 위주 ${focusText} 기초 다지기.`);
+            addCard('phase-build', '2. Build', build, `마일리지 증가 및 목표 페이스 적응 훈련.`);
+            addCard('phase-peak', '3. Peak', peak, `최대 강도 훈련. 실전 모의고사.`);
+            addCard('phase-taper', '4. Taper', taper, `훈련량 50% 감소. 컨디션 조절.`);
+        }
+    </script>
+</body>
+</html>
