@@ -1,1009 +1,1060 @@
-import React, { useState, useEffect } from 'react';
-import { LucideChevronRight, LucideChevronLeft, LucideActivity, LucideCheckCircle, LucideTrash2, LucideX, LucideBarChart2, LucideRefreshCw, LucideArrowRight, LucideSave, LucideTimer, LucideFootprints, LucideInfo, LucideTrendingUp, LucideUser, LucideCalendar, LucideAward, LucideZap, LucideClock, LucideHome } from 'lucide-react';
-
-// --- Utility Functions ---
-const generateId = () => Math.random().toString(36).substr(2, 9);
-
-const formatDate = (date) => {
-    if (!date) return '';
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = (`0${d.getMonth() + 1}`).slice(-2);
-    const day = (`0${d.getDate()}`).slice(-2);
-    return `${year}-${month}-${day}`;
-};
-
-const getDayName = (dateStr) => {
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
-    return days[new Date(dateStr).getDay()];
-};
-
-// --- Constants ---
-const PACES = {
-    recovery: { id: 'recovery', label: 'Recovery', time: "7'45\"", color: 'text-sky-500', bg: 'bg-sky-50', desc: '회복 조깅', intensity: 1 },
-    easy: { id: 'easy', label: 'Easy / LSD', time: "7'10\"", color: 'text-gray-600', bg: 'bg-gray-50', desc: '편안한 달리기', intensity: 2 },
-    steady: { id: 'steady', label: 'Steady', time: "6'19\"", color: 'text-purple-500', bg: 'bg-purple-50', desc: '지속주', intensity: 3 },
-    fartlek: { id: 'fartlek', label: 'Fartlek', time: "자유 변속", color: 'text-orange-500', bg: 'bg-orange-50', desc: '스피드 놀이', intensity: 4 },
-    threshold: { id: 'threshold', label: 'Threshold', time: "5'20\"", color: 'text-red-500', bg: 'bg-red-50', desc: '젖산 역치', intensity: 5 },
-    interval: { id: 'interval', label: 'Interval', time: "5'03\"", color: 'text-blue-600', bg: 'bg-blue-50', desc: '인터벌', intensity: 6 },
-    race: { id: 'race', label: 'Race Pace', time: "5'44\"", color: 'text-indigo-600', bg: 'bg-indigo-50', desc: '대회 페이스', intensity: 5 },
-};
-
-const FEEDBACK_LEVELS = [
-    { value: 1, label: '매우 쉬움', emoji: '😄', color: 'bg-green-100 text-green-700' },
-    { value: 2, label: '쉬움', emoji: '🙂', color: 'bg-blue-100 text-blue-700' },
-    { value: 3, label: '적당함', emoji: '😐', color: 'bg-gray-100 text-gray-700' },
-    { value: 4, label: '힘듦', emoji: '😓', color: 'bg-orange-100 text-orange-700' },
-    { value: 5, label: '매우 힘듦', emoji: '😫', color: 'bg-red-100 text-red-700' },
-];
-
-// --- Logic ---
-const generatePlan = (startDateStr = null, level = 'beginner', weeks = 12) => {
-    const plan = [];
-    // Use provided start date or default to today
-    let date = startDateStr ? new Date(startDateStr) : new Date();
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIMATR v5.6 - Marathon Training Partner</title>
     
-    // Simple level multiplier for demo (Beginner: 1.0, Intermediate: 1.2)
-    const distMult = level === 'intermediate' ? 1.2 : (level === 'advanced' ? 1.4 : 1.0);
-
-    for(let w=1; w<=weeks; w++) {
-        const week = { id: generateId(), weekNumber: w, days: [] };
-        for(let d=0; d<7; d++) {
-            const dayDate = new Date(date);
-            
-            let title = '휴식';
-            let type = 'rest'; 
-            let distance = 0;
-            let description = '휴식 및 회복';
-            let isRest = true;
-
-            // Generate Schedule logic
-            if (d === 0) { // Sunday
-                title = 'LSD Long Run';
-                type = 'easy';
-                distance = Math.round((15 + Math.floor(w/2)) * distMult * 10) / 10; 
-                description = `${PACES.easy.time} 페이스로 ${distance}km 완주 (중간에 멈추지 않기)`;
-                isRest = false;
-            } else if (d === 2) { // Tuesday
-                title = 'Interval Training';
-                type = 'interval';
-                const sets = 6 + (w > 6 ? 2 : 0);
-                distance = Math.round(((2 + (0.4 + 0.2) * sets + 2) * distMult) * 10) / 10;
-                description = `웜업 2k + (질주 400m @${PACES.interval.time} + 회복 200m @${PACES.recovery.time}) x ${sets}세트 + 쿨다운`;
-                isRest = false;
-            } else if (d === 3) { // Wednesday
-                title = 'Recovery Jog';
-                type = 'recovery';
-                distance = 5;
-                description = '피로 회복을 위한 아주 가벼운 조깅';
-                isRest = false;
-            } else if (d === 4) { // Thursday
-                title = 'Tempo Run';
-                type = 'threshold';
-                const baseDist = 6 + (w > 4 ? 2 : 0);
-                distance = Math.round(baseDist * distMult * 10) / 10;
-                const tempoDist = Math.max(distance - 3, 3);
-                description = `웜업 2k + ${tempoDist}km 지속주 (@${PACES.threshold.time}) + 쿨다운`;
-                isRest = false;
-            }
-
-            week.days.push({
-                id: generateId(),
-                date: formatDate(dayDate),
-                dayOfWeek: d, 
-                title,
-                type,
-                distance, 
-                description,
-                completed: false,
-                isRest,
-                feedback: null
-            });
-            date.setDate(date.getDate() + 1);
+    <!-- 1. Tailwind CSS 불러오기 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. 모바일용 폰트 설정 (Pretendard) -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <style>
+        body { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif; }
+        /* 스크롤바 숨기기 (선택사항) */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
         }
-        plan.push(week);
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+
+    <!-- 3. Import Map: 브라우저에서 import 구문 사용을 위한 설정 -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.263.1"
+        }
     }
-    return plan;
-};
+    </script>
 
-// --- Components ---
+    <!-- 4. Babel: 브라우저에서 JSX 실행 -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-[#E5E5E5]">
+    <div id="root"></div>
 
-// 1. Onboarding Screen
-const OnboardingView = ({ onComplete, initialData }) => {
-    // State for Current Record
-    const [currentDistance, setCurrentDistance] = useState('10');
-    const [currentHour, setCurrentHour] = useState('0');
-    const [currentMin, setCurrentMin] = useState('50');
-    const [currentSec, setCurrentSec] = useState('00');
+    <!-- 5. React 어플리케이션 코드 -->
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+            LucideChevronRight, LucideChevronLeft, LucideActivity, LucideCheckCircle, 
+            LucideTrash2, LucideX, LucideBarChart2, LucideRefreshCw, LucideArrowRight, 
+            LucideSave, LucideTimer, LucideFootprints, LucideInfo, LucideTrendingUp, 
+            LucideUser, LucideCalendar, LucideAward, LucideZap, LucideClock, LucideHome,
+            LucideDownload 
+        } from 'lucide-react';
 
-    // State for Target
-    const [targetDistance, setTargetDistance] = useState('Full');
-    const [targetDateInput, setTargetDateInput] = useState('');
-    
-    // Derived State
-    const [aiPrediction, setAiPrediction] = useState('');
-    const [recommendedWeeks, setRecommendedWeeks] = useState(16);
+        // --- Utility Functions ---
+        const generateId = () => Math.random().toString(36).substr(2, 9);
 
-    const distMap = {
-        '5': 5,
-        '10': 10,
-        'Half': 21.0975,
-        'Full': 42.195
-    };
+        const formatDate = (date) => {
+            if (!date) return '';
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = (`0${d.getMonth() + 1}`).slice(-2);
+            const day = (`0${d.getDate()}`).slice(-2);
+            return `${year}-${month}-${day}`;
+        };
 
-    // Initialize date on mount
-    useEffect(() => {
-        // Pre-fill if data exists
-        if (initialData) {
-            if(initialData.targetDistance) setTargetDistance(initialData.targetDistance);
-            if(initialData.targetDate) setTargetDateInput(initialData.targetDate);
-            // We could parse current record here if we saved it in granular parts, 
-            // but for simplicity we stick to defaults or last calculated if not fully saved.
-        } else {
-            const future = new Date();
-            future.setDate(future.getDate() + 16 * 7); // Default 16 weeks
-            setTargetDateInput(formatDate(future));
-        }
-    }, [initialData]);
+        const getDayName = (dateStr) => {
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            return days[new Date(dateStr).getDay()];
+        };
 
-    // Auto-update target date only if not manually set by initialData logic logic or user interaction
-    // Simplified: Just update defaults when target distance changes
-    useEffect(() => {
-        if (initialData && initialData.targetDistance === targetDistance) return;
+        // --- Constants ---
+        const PACES = {
+            recovery: { id: 'recovery', label: 'Recovery', time: "7'45\"", color: 'text-sky-500', bg: 'bg-sky-50', desc: '회복 조깅', intensity: 1 },
+            easy: { id: 'easy', label: 'Easy / LSD', time: "7'10\"", color: 'text-gray-600', bg: 'bg-gray-50', desc: '편안한 달리기', intensity: 2 },
+            steady: { id: 'steady', label: 'Steady', time: "6'19\"", color: 'text-purple-500', bg: 'bg-purple-50', desc: '지속주', intensity: 3 },
+            fartlek: { id: 'fartlek', label: 'Fartlek', time: "자유 변속", color: 'text-orange-500', bg: 'bg-orange-50', desc: '스피드 놀이', intensity: 4 },
+            threshold: { id: 'threshold', label: 'Threshold', time: "5'20\"", color: 'text-red-500', bg: 'bg-red-50', desc: '젖산 역치', intensity: 5 },
+            interval: { id: 'interval', label: 'Interval', time: "5'03\"", color: 'text-blue-600', bg: 'bg-blue-50', desc: '인터벌', intensity: 6 },
+            race: { id: 'race', label: 'Race Pace', time: "5'44\"", color: 'text-indigo-600', bg: 'bg-indigo-50', desc: '대회 페이스', intensity: 5 },
+        };
 
-        let weeks = 12;
-        if (targetDistance === '5') weeks = 8;
-        else if (targetDistance === '10') weeks = 10;
-        else if (targetDistance === 'Half') weeks = 12;
-        else if (targetDistance === 'Full') weeks = 16;
-        
-        const future = new Date();
-        future.setDate(future.getDate() + weeks * 7);
-        setTargetDateInput(formatDate(future));
-        
-    }, [targetDistance]);
+        const FEEDBACK_LEVELS = [
+            { value: 1, label: '매우 쉬움', emoji: '😄', color: 'bg-green-100 text-green-700' },
+            { value: 2, label: '쉬움', emoji: '🙂', color: 'bg-blue-100 text-blue-700' },
+            { value: 3, label: '적당함', emoji: '😐', color: 'bg-gray-100 text-gray-700' },
+            { value: 4, label: '힘듦', emoji: '😓', color: 'bg-orange-100 text-orange-700' },
+            { value: 5, label: '매우 힘듦', emoji: '😫', color: 'bg-red-100 text-red-700' },
+        ];
 
-    // Calculate prediction and training weeks
-    useEffect(() => {
-        const d1 = distMap[currentDistance];
-        const t1_min = parseInt(currentHour) * 60 + parseInt(currentMin) + parseInt(currentSec)/60;
-        const d2 = distMap[targetDistance];
-        
-        // Calculate weeks for training effect
-        const today = new Date();
-        const target = new Date(targetDateInput);
-        const diffTime = target - today;
-        const trainWeeks = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7)));
-        
-        setRecommendedWeeks(trainWeeks);
-
-        if (d1 && d2 && t1_min > 0) {
-            // Riegel's Formula
-            let t2_min = t1_min * Math.pow((d2 / d1), 1.06);
+        // --- Logic ---
+        const generatePlan = (startDateStr = null, level = 'beginner', weeks = 12) => {
+            const plan = [];
+            let date = startDateStr ? new Date(startDateStr) : new Date();
             
-            // Dynamic AI Boost based on training duration
-            const baseImprovement = 0.02;
-            const weekFactor = 0.002;
-            const cappedWeeks = Math.min(trainWeeks, 30);
-            
-            const totalImprovement = baseImprovement + (cappedWeeks * weekFactor);
-            
-            t2_min = t2_min * (1 - totalImprovement); 
+            const distMult = level === 'intermediate' ? 1.2 : (level === 'advanced' ? 1.4 : 1.0);
 
-            const h = Math.floor(t2_min / 60);
-            const m = Math.floor(t2_min % 60);
-            const s = Math.floor((t2_min * 60) % 60);
-            
-            setAiPrediction(`${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`);
-        }
-    }, [currentDistance, currentHour, currentMin, currentSec, targetDistance, targetDateInput]);
-
-    const handleSubmit = () => {
-        const totalMin = parseInt(currentHour)*60 + parseInt(currentMin);
-        const pace = totalMin / distMap[currentDistance]; 
-        let level = 'beginner';
-        if (pace < 4.5) level = 'advanced';
-        else if (pace < 5.5) level = 'intermediate';
-
-        onComplete({
-            targetDistance,
-            targetTime: aiPrediction,
-            aiPrediction,
-            recommendedWeeks,
-            targetDate: targetDateInput,
-            level
-        });
-    };
-
-    return (
-        <div className="h-full flex flex-col justify-center px-6 bg-white overflow-y-auto">
-            <div className="mb-6 text-center mt-10">
-                <div className="w-14 h-14 bg-slate-900 text-lime-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-                    <LucideTrendingUp size={28} strokeWidth={2.5} />
-                </div>
-                <h1 className="text-xl font-bold text-slate-800">AIMATR <span className="text-lime-500">v5.6</span></h1>
-                <p className="text-slate-500 text-xs">AI 기반 마라톤 훈련 파트너</p>
-            </div>
-
-            <div className="space-y-6 pb-10">
-                {/* 1. Current Record */}
-                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                    <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                        <LucideActivity size={16} className="text-blue-500"/> 현재 나의 기록은?
-                    </label>
-                    <div className="flex gap-2 mb-3">
-                        <div className="w-1/3">
-                            <span className="text-[10px] text-slate-400 block mb-1 ml-1">거리</span>
-                            <select value={currentDistance} onChange={(e) => setCurrentDistance(e.target.value)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-700 text-sm outline-none">
-                                <option value="5">5K</option>
-                                <option value="10">10K</option>
-                                <option value="Half">Half</option>
-                                <option value="Full">Full</option>
-                            </select>
-                        </div>
-                        <div className="flex-1 flex gap-1">
-                            <div className="flex-1">
-                                <span className="text-[10px] text-slate-400 block mb-1 ml-1">시간</span>
-                                <select value={currentHour} onChange={(e)=>setCurrentHour(e.target.value)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-center text-sm outline-none">
-                                    {[...Array(6)].map((_,i) => <option key={i} value={i}>{i}h</option>)}
-                                </select>
-                            </div>
-                            <div className="flex-1">
-                                <span className="text-[10px] text-slate-400 block mb-1 ml-1">분</span>
-                                <select value={currentMin} onChange={(e)=>setCurrentMin(e.target.value)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-center text-sm outline-none">
-                                    {[...Array(60)].map((_,i) => <option key={i} value={i}>{i}m</option>)}
-                                </select>
-                            </div>
-                            <div className="flex-1">
-                                <span className="text-[10px] text-slate-400 block mb-1 ml-1">초</span>
-                                <select value={currentSec} onChange={(e)=>setCurrentSec(e.target.value)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-center text-sm outline-none">
-                                    {[...Array(60)].map((_,i) => <option key={i} value={i}>{i}s</option>)}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 2. Target Distance */}
-                <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                        <LucideAward size={16} className="text-orange-500"/> 목표 레이스 거리는?
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                        {['5', '10', 'Half', 'Full'].map((dist) => (
-                            <button
-                                key={dist}
-                                onClick={() => setTargetDistance(dist)}
-                                className={`p-3 rounded-xl text-sm font-bold transition-all border-2 ${
-                                    targetDistance === dist 
-                                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                                    : 'border-transparent bg-slate-50 text-slate-400 hover:bg-slate-100'
-                                }`}
-                            >
-                                {dist === '5' ? '5K' : (dist === '10' ? '10K' : dist)}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* 3. AI Prediction & Date Selection */}
-                <div className="bg-slate-900 rounded-2xl p-5 text-white relative overflow-hidden shadow-xl transition-all duration-300">
-                    <div className="absolute -top-4 -right-4 text-white/5 rotate-12">
-                        <LucideZap size={100} />
-                    </div>
-                    <div className="relative z-10">
-                        <div className="flex items-center gap-2 text-lime-400 text-xs font-bold mb-3">
-                            <LucideZap size={14} /> AI 분석 결과
-                        </div>
-                        <div className="flex justify-between items-end mb-4 border-b border-white/10 pb-4">
-                            <span className="text-slate-400 text-sm">예상 완주 기록</span>
-                            <span className="text-3xl font-mono font-bold tracking-tight animate-in fade-in slide-in-from-bottom-1 duration-500" key={aiPrediction}>
-                                {aiPrediction || '--:--:--'}
-                            </span>
-                        </div>
-                        
-                        <div className="mb-3">
-                            <label className="text-slate-400 text-xs block mb-1 flex items-center gap-1">
-                                <LucideCalendar size={12}/> 목표 레이스 날짜 (D-Day)
-                            </label>
-                            <input 
-                                type="date"
-                                value={targetDateInput}
-                                onChange={(e) => setTargetDateInput(e.target.value)}
-                                className="w-full bg-white/10 border border-white/20 rounded-lg p-2 text-white text-sm font-bold focus:outline-none focus:bg-white/20"
-                            />
-                        </div>
-
-                        <div className="flex justify-between items-center text-xs text-slate-400">
-                            <span>훈련 기간: <span className="text-white font-bold">{recommendedWeeks}주</span></span>
-                            <span className="text-lime-400 text-[10px]">*기간이 길수록 기록 단축 유리</span>
-                        </div>
-                    </div>
-                </div>
-
-                <button 
-                    onClick={handleSubmit}
-                    className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transform active:scale-[0.98] transition-all"
-                >
-                    이 플랜으로 시작하기
-                </button>
-            </div>
-        </div>
-    );
-};
-
-// 2. Main App Components
-const Header = ({ onGoHome }) => (
-    <div className="flex justify-between items-center px-4 py-3 mb-2">
-        <h1 className="font-bold text-lg text-slate-800">
-            AIMATR <span className="text-lime-500 text-sm">v5.6</span>
-        </h1>
-        <button 
-            onClick={onGoHome}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 bg-white px-3 py-1.5 rounded-full border border-slate-100 shadow-sm transition-colors"
-        >
-            <LucideHome size={12} />
-            처음으로
-        </button>
-    </div>
-);
-
-const TabNav = ({ activeTab, onTabChange }) => (
-    <div className="mx-4 mb-6 bg-gray-200 p-1 rounded-xl flex text-sm font-medium text-gray-500">
-        {['요약', '스케줄', '데이터'].map(tab => (
-            <button
-                key={tab}
-                onClick={() => onTabChange(tab)}
-                className={`flex-1 py-2 rounded-lg transition-all ${
-                    activeTab === tab 
-                    ? 'bg-white text-gray-800 shadow-sm' 
-                    : 'hover:bg-gray-300/50'
-                }`}
-            >
-                {tab}
-            </button>
-        ))}
-    </div>
-);
-
-const AdjustmentModal = ({ adjustments, onClose }) => {
-    if (!adjustments || adjustments.length === 0) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-in fade-in zoom-in duration-300">
-                <div className="text-center mb-6">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <LucideTrendingUp className="text-blue-600" size={24} />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-800">훈련 강도 상향 조정</h3>
-                    <p className="text-sm text-slate-500 mt-1">
-                        피드백(매우 쉬움)을 반영하여<br/>남은 훈련의 강도를 과학적으로 높였습니다.
-                    </p>
-                </div>
-                
-                <div className="bg-slate-50 rounded-xl p-4 max-h-60 overflow-y-auto mb-6 space-y-3">
-                    {adjustments.map((adj, idx) => (
-                        <div key={idx} className="flex items-start gap-3 border-b border-slate-100 last:border-0 pb-2 last:pb-0">
-                            <div className="mt-1">
-                                <LucideCheckCircle size={14} className="text-green-500" />
-                            </div>
-                            <div>
-                                <div className="text-xs font-bold text-slate-500 mb-0.5">{adj.date} ({adj.title})</div>
-                                <div className="text-sm font-semibold text-slate-800">{adj.change}</div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <button 
-                    onClick={onClose}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors"
-                >
-                    확인했습니다
-                </button>
-            </div>
-        </div>
-    );
-};
-
-const SummaryView = ({ onStart, userData }) => {
-    const targetDate = userData?.targetDate ? new Date(userData.targetDate) : new Date();
-    const today = new Date();
-    const diff = targetDate - today;
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    
-    return (
-        <div className="px-6 space-y-6">
-            <div className="space-y-1">
-                <div className="flex justify-between items-baseline">
-                    <span className="text-gray-600 text-sm">AI 예상 완주 기록</span>
-                    <span className="text-slate-900 font-bold font-mono text-xl">
-                        {userData?.aiPrediction || '03:45:00'}
-                    </span>
-                </div>
-                <div className="flex justify-between items-baseline">
-                    <span className="text-gray-600 text-sm">목표: {userData?.targetDistance === 'Full' ? '42.195km' : (userData?.targetDistance === 'Half' ? '21.1km' : `${userData?.targetDistance}km`)}</span>
-                    <div className="text-xs text-gray-500 space-x-2">
-                        <span>기간: <b className="text-gray-800">{userData?.recommendedWeeks || 12}주</b></span>
-                        <span className="mx-1">|</span>
-                        <span><b className="text-red-500">{days > 0 ? `D-${days}` : (days === 0 ? 'D-Day' : `D+${Math.abs(days)}`)}</b></span>
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <h3 className="text-gray-700 font-bold mb-4 flex items-center gap-1">
-                    <span>🏃</span> 훈련 페이스 가이드
-                </h3>
-                <div className="grid grid-cols-1 gap-3">
-                    {Object.values(PACES).map((pace, idx) => (
-                        <div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center transition-all hover:shadow-md hover:scale-[1.01]">
-                            <div className="flex flex-col">
-                                <span className={`font-bold text-sm ${pace.color}`}>{pace.label}</span>
-                                <span className="text-xs text-gray-400 mt-0.5">{pace.desc}</span>
-                            </div>
-                            <div className={`px-3 py-1.5 rounded-lg ${pace.bg || 'bg-gray-50'}`}>
-                                <span className="text-gray-800 font-mono font-bold text-lg tracking-tight">{pace.time}</span>
-                                <span className="text-[10px] text-gray-400 ml-1">/km</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="pt-4 pb-8">
-                <button 
-                    onClick={onStart}
-                    className="w-full bg-slate-700 hover:bg-slate-800 text-white font-medium py-4 rounded-xl shadow-lg transition-colors flex justify-center items-center"
-                >
-                    스케줄 관리 시작하기
-                </button>
-            </div>
-        </div>
-    );
-};
-
-const WorkoutDetailModal = ({ day, isOpen, onClose, onUpdate, onAdjustPlan }) => {
-    const [selectedFeedback, setSelectedFeedback] = useState(null);
-
-    useEffect(() => {
-        if (day) {
-            setSelectedFeedback(day.feedback);
-        }
-    }, [day, isOpen]);
-
-    if (!isOpen || !day) return null;
-
-    const handleReplaceWorkout = (paceKey) => {
-        const pace = PACES[paceKey];
-        let defaultDistance = 5;
-        let defaultDesc = '대체 훈련';
-        
-        if (paceKey === 'easy' || paceKey === 'recovery') {
-            defaultDistance = 5;
-            defaultDesc = '가벼운 조깅';
-        }
-        if (paceKey === 'steady' || paceKey === 'threshold') {
-            defaultDistance = 8;
-            defaultDesc = `지속주 훈련 (@${pace.time})`;
-        }
-        if (paceKey === 'interval') {
-            defaultDistance = 6;
-            defaultDesc = `400m 질주(@${pace.time}) x 8세트`;
-        }
-        if (paceKey === 'race') {
-            defaultDistance = 10;
-            defaultDesc = `대회 페이스(@${pace.time}) 적응 훈련`;
-        }
-
-        onUpdate(day.id, {
-            title: pace.label,
-            type: paceKey,
-            distance: defaultDistance,
-            description: defaultDesc,
-            isRest: false,
-            completed: false,
-            feedback: null
-        });
-        onClose();
-    };
-
-    const handleSaveFeedback = () => {
-        if (selectedFeedback) {
-            onUpdate(day.id, { feedback: selectedFeedback, completed: true });
-            if (selectedFeedback === 1) {
-                onAdjustPlan(day.id);
-            }
-        }
-    };
-
-    const handleRest = () => {
-        onUpdate(day.id, { title: '휴식', type: 'rest', distance: 0, description: '휴식 및 회복', isRest: true, completed: false, feedback: null });
-        onClose();
-    }
-
-    return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div 
-                className="bg-white w-full max-w-sm rounded-[30px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="bg-slate-800 text-white p-6 relative">
-                    <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors">
-                        <LucideX size={24} />
-                    </button>
-                    <div className="text-white/60 text-sm font-medium mb-1 flex items-center gap-1">
-                        {formatDate(day.date)} <LucideArrowRight size={12}/> {getDayName(day.date)}요일
-                    </div>
-                    <h2 className="text-2xl font-bold flex items-center gap-2">
-                        {day.title}
-                    </h2>
-                    <p className="text-white/70 text-sm mt-1 mb-3">{day.description}</p>
+            for(let w=1; w<=weeks; w++) {
+                const week = { id: generateId(), weekNumber: w, days: [] };
+                for(let d=0; d<7; d++) {
+                    const dayDate = new Date(date);
                     
-                    {!day.isRest && (
-                         <div className="flex items-center gap-4 text-sm text-white/90">
-                             <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-md">
-                                 <LucideFootprints size={14}/> {day.distance}km
-                             </div>
-                             {PACES[day.type] && (
-                                <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-md">
-                                    <LucideTimer size={14}/> {PACES[day.type].time}/km
-                                </div>
-                             )}
-                         </div>
-                    )}
-                </div>
+                    let title = '휴식';
+                    let type = 'rest'; 
+                    let distance = 0;
+                    let description = '휴식 및 회복';
+                    let isRest = true;
 
-                <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto">
-                    <div>
-                        <h3 className="text-gray-800 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
-                            <LucideCheckCircle size={16} className="text-blue-500" />
-                            훈련 완료 및 난이도 기록
-                        </h3>
-                        <p className="text-xs text-gray-500 mb-2">
-                            오늘 훈련이 어땠나요? 난이도를 선택 후 저장해주세요.
-                        </p>
+                    if (d === 0) { // Sunday
+                        title = 'LSD Long Run';
+                        type = 'easy';
+                        distance = Math.round((15 + Math.floor(w/2)) * distMult * 10) / 10; 
+                        description = `${PACES.easy.time} 페이스로 ${distance}km 완주 (중간에 멈추지 않기)`;
+                        isRest = false;
+                    } else if (d === 2) { // Tuesday
+                        title = 'Interval Training';
+                        type = 'interval';
+                        const sets = 6 + (w > 6 ? 2 : 0);
+                        distance = Math.round(((2 + (0.4 + 0.2) * sets + 2) * distMult) * 10) / 10;
+                        description = `웜업 2k + (질주 400m @${PACES.interval.time} + 회복 200m @${PACES.recovery.time}) x ${sets}세트 + 쿨다운`;
+                        isRest = false;
+                    } else if (d === 3) { // Wednesday
+                        title = 'Recovery Jog';
+                        type = 'recovery';
+                        distance = 5;
+                        description = '피로 회복을 위한 아주 가벼운 조깅';
+                        isRest = false;
+                    } else if (d === 4) { // Thursday
+                        title = 'Tempo Run';
+                        type = 'threshold';
+                        const baseDist = 6 + (w > 4 ? 2 : 0);
+                        distance = Math.round(baseDist * distMult * 10) / 10;
+                        const tempoDist = Math.max(distance - 3, 3);
+                        description = `웜업 2k + ${tempoDist}km 지속주 (@${PACES.threshold.time}) + 쿨다운`;
+                        isRest = false;
+                    }
+
+                    week.days.push({
+                        id: generateId(),
+                        date: formatDate(dayDate),
+                        dayOfWeek: d, 
+                        title,
+                        type,
+                        distance, 
+                        description,
+                        completed: false,
+                        isRest,
+                        feedback: null
+                    });
+                    date.setDate(date.getDate() + 1);
+                }
+                plan.push(week);
+            }
+            return plan;
+        };
+
+        // --- Components ---
+
+        const OnboardingView = ({ onComplete, initialData }) => {
+            const [currentDistance, setCurrentDistance] = useState('10');
+            const [currentHour, setCurrentHour] = useState('0');
+            const [currentMin, setCurrentMin] = useState('50');
+            const [currentSec, setCurrentSec] = useState('00');
+
+            const [targetDistance, setTargetDistance] = useState('Full');
+            const [targetDateInput, setTargetDateInput] = useState('');
+            
+            const [aiPrediction, setAiPrediction] = useState('');
+            const [recommendedWeeks, setRecommendedWeeks] = useState(16);
+
+            const distMap = {
+                '5': 5,
+                '10': 10,
+                'Half': 21.0975,
+                'Full': 42.195
+            };
+
+            useEffect(() => {
+                if (initialData) {
+                    if(initialData.targetDistance) setTargetDistance(initialData.targetDistance);
+                    if(initialData.targetDate) setTargetDateInput(initialData.targetDate);
+                } else {
+                    const future = new Date();
+                    future.setDate(future.getDate() + 16 * 7); 
+                    setTargetDateInput(formatDate(future));
+                }
+            }, [initialData]);
+
+            useEffect(() => {
+                if (initialData && initialData.targetDistance === targetDistance) return;
+
+                let weeks = 12;
+                if (targetDistance === '5') weeks = 8;
+                else if (targetDistance === '10') weeks = 10;
+                else if (targetDistance === 'Half') weeks = 12;
+                else if (targetDistance === 'Full') weeks = 16;
+                
+                const future = new Date();
+                future.setDate(future.getDate() + weeks * 7);
+                setTargetDateInput(formatDate(future));
+                
+            }, [targetDistance]);
+
+            useEffect(() => {
+                const d1 = distMap[currentDistance];
+                const t1_min = parseInt(currentHour) * 60 + parseInt(currentMin) + parseInt(currentSec)/60;
+                const d2 = distMap[targetDistance];
+                
+                const today = new Date();
+                const target = new Date(targetDateInput);
+                const diffTime = target - today;
+                const trainWeeks = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7)));
+                
+                setRecommendedWeeks(trainWeeks);
+
+                if (d1 && d2 && t1_min > 0) {
+                    let t2_min = t1_min * Math.pow((d2 / d1), 1.06);
+                    
+                    const baseImprovement = 0.02;
+                    const weekFactor = 0.002;
+                    const cappedWeeks = Math.min(trainWeeks, 30);
+                    
+                    const totalImprovement = baseImprovement + (cappedWeeks * weekFactor);
+                    
+                    t2_min = t2_min * (1 - totalImprovement); 
+
+                    const h = Math.floor(t2_min / 60);
+                    const m = Math.floor(t2_min % 60);
+                    const s = Math.floor((t2_min * 60) % 60);
+                    
+                    setAiPrediction(`${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`);
+                }
+            }, [currentDistance, currentHour, currentMin, currentSec, targetDistance, targetDateInput]);
+
+            const handleSubmit = () => {
+                const totalMin = parseInt(currentHour)*60 + parseInt(currentMin);
+                const pace = totalMin / distMap[currentDistance]; 
+                let level = 'beginner';
+                if (pace < 4.5) level = 'advanced';
+                else if (pace < 5.5) level = 'intermediate';
+
+                onComplete({
+                    targetDistance,
+                    targetTime: aiPrediction,
+                    aiPrediction,
+                    recommendedWeeks,
+                    targetDate: targetDateInput,
+                    level
+                });
+            };
+
+            return (
+                <div className="h-full flex flex-col justify-center px-6 bg-white overflow-y-auto">
+                    <div className="mb-6 text-center mt-10">
+                        <div className="w-14 h-14 bg-slate-900 text-lime-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+                            <LucideTrendingUp size={28} strokeWidth={2.5} />
+                        </div>
+                        <h1 className="text-xl font-bold text-slate-800">AIMATR <span className="text-lime-500">v5.6</span></h1>
+                        <p className="text-slate-500 text-xs">AI 기반 마라톤 훈련 파트너</p>
+                    </div>
+
+                    <div className="space-y-6 pb-10">
+                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                            <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                <LucideActivity size={16} className="text-blue-500"/> 현재 나의 기록은?
+                            </label>
+                            <div className="flex gap-2 mb-3">
+                                <div className="w-1/3">
+                                    <span className="text-[10px] text-slate-400 block mb-1 ml-1">거리</span>
+                                    <select value={currentDistance} onChange={(e) => setCurrentDistance(e.target.value)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-center font-bold text-slate-700 text-sm outline-none">
+                                        <option value="5">5K</option>
+                                        <option value="10">10K</option>
+                                        <option value="Half">Half</option>
+                                        <option value="Full">Full</option>
+                                    </select>
+                                </div>
+                                <div className="flex-1 flex gap-1">
+                                    <div className="flex-1">
+                                        <span className="text-[10px] text-slate-400 block mb-1 ml-1">시간</span>
+                                        <select value={currentHour} onChange={(e)=>setCurrentHour(e.target.value)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-center text-sm outline-none">
+                                            {[...Array(6)].map((_,i) => <option key={i} value={i}>{i}h</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex-1">
+                                        <span className="text-[10px] text-slate-400 block mb-1 ml-1">분</span>
+                                        <select value={currentMin} onChange={(e)=>setCurrentMin(e.target.value)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-center text-sm outline-none">
+                                            {[...Array(60)].map((_,i) => <option key={i} value={i}>{i}m</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex-1">
+                                        <span className="text-[10px] text-slate-400 block mb-1 ml-1">초</span>
+                                        <select value={currentSec} onChange={(e)=>setCurrentSec(e.target.value)} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-center text-sm outline-none">
+                                            {[...Array(60)].map((_,i) => <option key={i} value={i}>{i}s</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                <LucideAward size={16} className="text-orange-500"/> 목표 레이스 거리는?
+                            </label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {['5', '10', 'Half', 'Full'].map((dist) => (
+                                    <button
+                                        key={dist}
+                                        onClick={() => setTargetDistance(dist)}
+                                        className={`p-3 rounded-xl text-sm font-bold transition-all border-2 ${
+                                            targetDistance === dist 
+                                            ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                                            : 'border-transparent bg-slate-50 text-slate-400 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {dist === '5' ? '5K' : (dist === '10' ? '10K' : dist)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-900 rounded-2xl p-5 text-white relative overflow-hidden shadow-xl transition-all duration-300">
+                            <div className="absolute -top-4 -right-4 text-white/5 rotate-12">
+                                <LucideZap size={100} />
+                            </div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-2 text-lime-400 text-xs font-bold mb-3">
+                                    <LucideZap size={14} /> AI 분석 결과
+                                </div>
+                                <div className="flex justify-between items-end mb-4 border-b border-white/10 pb-4">
+                                    <span className="text-slate-400 text-sm">예상 완주 기록</span>
+                                    <span className="text-3xl font-mono font-bold tracking-tight animate-in fade-in slide-in-from-bottom-1 duration-500" key={aiPrediction}>
+                                        {aiPrediction || '--:--:--'}
+                                    </span>
+                                </div>
+                                
+                                <div className="mb-3">
+                                    <label className="text-slate-400 text-xs block mb-1 flex items-center gap-1">
+                                        <LucideCalendar size={12}/> 목표 레이스 날짜 (D-Day)
+                                    </label>
+                                    <input 
+                                        type="date"
+                                        value={targetDateInput}
+                                        onChange={(e) => setTargetDateInput(e.target.value)}
+                                        className="w-full bg-white/10 border border-white/20 rounded-lg p-2 text-white text-sm font-bold focus:outline-none focus:bg-white/20"
+                                    />
+                                </div>
+
+                                <div className="flex justify-between items-center text-xs text-slate-400">
+                                    <span>훈련 기간: <span className="text-white font-bold">{recommendedWeeks}주</span></span>
+                                    <span className="text-lime-400 text-[10px]">*기간이 길수록 기록 단축 유리</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button 
+                            onClick={handleSubmit}
+                            className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transform active:scale-[0.98] transition-all"
+                        >
+                            이 플랜으로 시작하기
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const Header = ({ onGoHome }) => (
+            <div className="flex justify-between items-center px-4 py-3 mb-2">
+                <h1 className="font-bold text-lg text-slate-800">
+                    AIMATR <span className="text-lime-500 text-sm">v5.6</span>
+                </h1>
+                <button 
+                    onClick={onGoHome}
+                    className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 bg-white px-3 py-1.5 rounded-full border border-slate-100 shadow-sm transition-colors"
+                >
+                    <LucideHome size={12} />
+                    처음으로
+                </button>
+            </div>
+        );
+
+        const TabNav = ({ activeTab, onTabChange }) => (
+            <div className="mx-4 mb-6 bg-gray-200 p-1 rounded-xl flex text-sm font-medium text-gray-500">
+                {['요약', '스케줄', '데이터'].map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => onTabChange(tab)}
+                        className={`flex-1 py-2 rounded-lg transition-all ${
+                            activeTab === tab 
+                            ? 'bg-white text-gray-800 shadow-sm' 
+                            : 'hover:bg-gray-300/50'
+                        }`}
+                    >
+                        {tab}
+                    </button>
+                ))}
+            </div>
+        );
+
+        const AdjustmentModal = ({ adjustments, onClose }) => {
+            if (!adjustments || adjustments.length === 0) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-in fade-in zoom-in duration-300">
+                        <div className="text-center mb-6">
+                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <LucideTrendingUp className="text-blue-600" size={24} />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-800">훈련 강도 상향 조정</h3>
+                            <p className="text-sm text-slate-500 mt-1">
+                                피드백(매우 쉬움)을 반영하여<br/>남은 훈련의 강도를 과학적으로 높였습니다.
+                            </p>
+                        </div>
                         
-                        <div className="grid grid-cols-5 gap-2 mb-4">
-                            {FEEDBACK_LEVELS.map((level) => (
-                                <button
-                                    key={level.value}
-                                    onClick={() => setSelectedFeedback(level.value)}
-                                    className={`flex flex-col items-center p-2 rounded-xl transition-all border-2 ${
-                                        selectedFeedback === level.value 
-                                        ? 'border-blue-500 bg-blue-50 scale-110 shadow-md ring-2 ring-blue-200' 
-                                        : 'border-transparent hover:bg-gray-50'
-                                    }`}
-                                >
-                                    <span className="text-2xl mb-1 filter drop-shadow-sm">{level.emoji}</span>
-                                    <span className="text-[10px] font-bold text-gray-500">{level.label}</span>
-                                </button>
+                        <div className="bg-slate-50 rounded-xl p-4 max-h-60 overflow-y-auto mb-6 space-y-3">
+                            {adjustments.map((adj, idx) => (
+                                <div key={idx} className="flex items-start gap-3 border-b border-slate-100 last:border-0 pb-2 last:pb-0">
+                                    <div className="mt-1">
+                                        <LucideCheckCircle size={14} className="text-green-500" />
+                                    </div>
+                                    <div>
+                                        <div className="text-xs font-bold text-slate-500 mb-0.5">{adj.date} ({adj.title})</div>
+                                        <div className="text-sm font-semibold text-slate-800">{adj.change}</div>
+                                    </div>
+                                </div>
                             ))}
                         </div>
 
-                        <button
-                            onClick={handleSaveFeedback}
-                            disabled={!selectedFeedback}
-                            className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-                                selectedFeedback
-                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md transform active:scale-[0.98]'
-                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        <button 
+                            onClick={onClose}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors"
+                        >
+                            확인했습니다
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const SummaryView = ({ onStart, userData }) => {
+            const targetDate = userData?.targetDate ? new Date(userData.targetDate) : new Date();
+            const today = new Date();
+            const diff = targetDate - today;
+            const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+            
+            return (
+                <div className="px-6 space-y-6">
+                    <div className="space-y-1">
+                        <div className="flex justify-between items-baseline">
+                            <span className="text-gray-600 text-sm">AI 예상 완주 기록</span>
+                            <span className="text-slate-900 font-bold font-mono text-xl">
+                                {userData?.aiPrediction || '03:45:00'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-baseline">
+                            <span className="text-gray-600 text-sm">목표: {userData?.targetDistance === 'Full' ? '42.195km' : (userData?.targetDistance === 'Half' ? '21.1km' : `${userData?.targetDistance}km`)}</span>
+                            <div className="text-xs text-gray-500 space-x-2">
+                                <span>기간: <b className="text-gray-800">{userData?.recommendedWeeks || 12}주</b></span>
+                                <span className="mx-1">|</span>
+                                <span><b className="text-red-500">{days > 0 ? `D-${days}` : (days === 0 ? 'D-Day' : `D+${Math.abs(days)}`)}</b></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 className="text-gray-700 font-bold mb-4 flex items-center gap-1">
+                            <span>🏃</span> 훈련 페이스 가이드
+                        </h3>
+                        <div className="grid grid-cols-1 gap-3">
+                            {Object.values(PACES).map((pace, idx) => (
+                                <div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center transition-all hover:shadow-md hover:scale-[1.01]">
+                                    <div className="flex flex-col">
+                                        <span className={`font-bold text-sm ${pace.color}`}>{pace.label}</span>
+                                        <span className="text-xs text-gray-400 mt-0.5">{pace.desc}</span>
+                                    </div>
+                                    <div className={`px-3 py-1.5 rounded-lg ${pace.bg || 'bg-gray-50'}`}>
+                                        <span className="text-gray-800 font-mono font-bold text-lg tracking-tight">{pace.time}</span>
+                                        <span className="text-[10px] text-gray-400 ml-1">/km</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="pt-4 pb-8">
+                        <button 
+                            onClick={onStart}
+                            className="w-full bg-slate-700 hover:bg-slate-800 text-white font-medium py-4 rounded-xl shadow-lg transition-colors flex justify-center items-center"
+                        >
+                            스케줄 관리 시작하기
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const WorkoutDetailModal = ({ day, isOpen, onClose, onUpdate, onAdjustPlan }) => {
+            const [selectedFeedback, setSelectedFeedback] = useState(null);
+
+            useEffect(() => {
+                if (day) {
+                    setSelectedFeedback(day.feedback);
+                }
+            }, [day, isOpen]);
+
+            if (!isOpen || !day) return null;
+
+            const handleReplaceWorkout = (paceKey) => {
+                const pace = PACES[paceKey];
+                let defaultDistance = 5;
+                let defaultDesc = '대체 훈련';
+                
+                if (paceKey === 'easy' || paceKey === 'recovery') {
+                    defaultDistance = 5;
+                    defaultDesc = '가벼운 조깅';
+                }
+                if (paceKey === 'steady' || paceKey === 'threshold') {
+                    defaultDistance = 8;
+                    defaultDesc = `지속주 훈련 (@${pace.time})`;
+                }
+                if (paceKey === 'interval') {
+                    defaultDistance = 6;
+                    defaultDesc = `400m 질주(@${pace.time}) x 8세트`;
+                }
+                if (paceKey === 'race') {
+                    defaultDistance = 10;
+                    defaultDesc = `대회 페이스(@${pace.time}) 적응 훈련`;
+                }
+
+                onUpdate(day.id, {
+                    title: pace.label,
+                    type: paceKey,
+                    distance: defaultDistance,
+                    description: defaultDesc,
+                    isRest: false,
+                    completed: false,
+                    feedback: null
+                });
+                onClose();
+            };
+
+            const handleSaveFeedback = () => {
+                if (selectedFeedback) {
+                    onUpdate(day.id, { feedback: selectedFeedback, completed: true });
+                    if (selectedFeedback === 1) {
+                        onAdjustPlan(day.id);
+                    }
+                }
+            };
+
+            const handleRest = () => {
+                onUpdate(day.id, { title: '휴식', type: 'rest', distance: 0, description: '휴식 및 회복', isRest: true, completed: false, feedback: null });
+                onClose();
+            }
+
+            return (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+                    <div 
+                        className="bg-white w-full max-w-sm rounded-[30px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="bg-slate-800 text-white p-6 relative">
+                            <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors">
+                                <LucideX size={24} />
+                            </button>
+                            <div className="text-white/60 text-sm font-medium mb-1 flex items-center gap-1">
+                                {formatDate(day.date)} <LucideArrowRight size={12}/> {getDayName(day.date)}요일
+                            </div>
+                            <h2 className="text-2xl font-bold flex items-center gap-2">
+                                {day.title}
+                            </h2>
+                            <p className="text-white/70 text-sm mt-1 mb-3">{day.description}</p>
+                            
+                            {!day.isRest && (
+                                <div className="flex items-center gap-4 text-sm text-white/90">
+                                    <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-md">
+                                        <LucideFootprints size={14}/> {day.distance}km
+                                    </div>
+                                    {PACES[day.type] && (
+                                        <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-md">
+                                            <LucideTimer size={14}/> {PACES[day.type].time}/km
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto">
+                            <div>
+                                <h3 className="text-gray-800 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                    <LucideCheckCircle size={16} className="text-blue-500" />
+                                    훈련 완료 및 난이도 기록
+                                </h3>
+                                <p className="text-xs text-gray-500 mb-2">
+                                    오늘 훈련이 어땠나요? 난이도를 선택 후 저장해주세요.
+                                </p>
+                                
+                                <div className="grid grid-cols-5 gap-2 mb-4">
+                                    {FEEDBACK_LEVELS.map((level) => (
+                                        <button
+                                            key={level.value}
+                                            onClick={() => setSelectedFeedback(level.value)}
+                                            className={`flex flex-col items-center p-2 rounded-xl transition-all border-2 ${
+                                                selectedFeedback === level.value 
+                                                ? 'border-blue-500 bg-blue-50 scale-110 shadow-md ring-2 ring-blue-200' 
+                                                : 'border-transparent hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            <span className="text-2xl mb-1 filter drop-shadow-sm">{level.emoji}</span>
+                                            <span className="text-[10px] font-bold text-gray-500">{level.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <button
+                                    onClick={handleSaveFeedback}
+                                    disabled={!selectedFeedback}
+                                    className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                                        selectedFeedback
+                                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md transform active:scale-[0.98]'
+                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    }`}
+                                >
+                                    {day.completed && day.feedback === selectedFeedback ? (
+                                        <>
+                                            <LucideCheckCircle size={18} /> 저장됨
+                                        </>
+                                    ) : (
+                                        <>
+                                            <LucideSave size={18} /> 저장하기
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            <div className="h-px bg-gray-100"></div>
+
+                            <div>
+                                <h3 className="text-gray-800 font-bold mb-2 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                    <LucideRefreshCw size={16} className="text-blue-500" />
+                                    훈련 변경하기
+                                </h3>
+                                <p className="text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded-lg">
+                                    컨디션이 좋지 않다면, 무리하지 말고 강도가 낮은 훈련이나 휴식을 선택하세요.
+                                </p>
+                                
+                                <div className="space-y-2 max-h-60 overflow-y-auto pr-1 scrollbar-hide">
+                                    {Object.entries(PACES)
+                                        .sort(([,a], [,b]) => a.intensity - b.intensity)
+                                        .map(([key, pace]) => (
+                                        <button
+                                            key={key}
+                                            onClick={() => handleReplaceWorkout(key)}
+                                            className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-all group text-left"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col gap-0.5">
+                                                    {[...Array(3)].map((_, i) => (
+                                                        <div 
+                                                            key={i} 
+                                                            className={`w-1 h-1 rounded-full ${
+                                                                i < Math.ceil(pace.intensity / 2) 
+                                                                ? 'bg-blue-400' 
+                                                                : 'bg-gray-200'
+                                                            }`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-sm text-gray-700 group-hover:text-blue-700">{pace.label}</div>
+                                                    <div className="text-[11px] text-gray-400">{pace.desc}</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs font-mono text-gray-500 group-hover:text-blue-600 bg-gray-50 group-hover:bg-white px-2 py-1 rounded">
+                                                {pace.time}/km
+                                            </div>
+                                        </button>
+                                    ))}
+                                    <button
+                                        onClick={handleRest}
+                                        className="w-full flex items-center justify-center p-3 rounded-xl border border-dashed border-gray-300 hover:bg-gray-50 text-gray-500 font-medium text-sm mt-3 gap-2"
+                                    >
+                                        <span>☕</span> 오늘은 휴식하기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ScheduleItem = ({ day, onToggle, onClick, isToday }) => {
+            const getFeedbackEmoji = () => {
+                if (!day.feedback) return null;
+                return FEEDBACK_LEVELS.find(f => f.value === day.feedback)?.emoji;
+            };
+
+            const paceInfo = PACES[day.type];
+
+            return (
+                <div 
+                    onClick={() => onClick(day)}
+                    className={`relative flex items-center p-4 mb-2 rounded-xl border transition-all cursor-pointer group select-none active:scale-[0.98] ${
+                        isToday 
+                        ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/20 z-10 shadow-md' 
+                        : (day.completed ? 'bg-green-50/30 border-green-100' : 'bg-white border-gray-100 hover:border-gray-300 shadow-sm')
+                    }`}
+                >
+                    {isToday && (
+                        <div className="absolute -top-2.5 left-3 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                            <span>🔥</span> Today
+                        </div>
+                    )}
+
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 text-sm font-bold transition-colors ${
+                        isToday 
+                        ? 'bg-blue-600 text-white shadow-blue-200 shadow-lg' 
+                        : (day.isRest ? 'bg-gray-100 text-gray-400' : 'bg-blue-50 text-blue-600')
+                    }`}>
+                        {getDayName(day.date)}
+                    </div>
+                    
+                    <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                            <div className="flex flex-col gap-1 w-full">
+                                <div className="flex items-center gap-2">
+                                    <span className={`font-bold text-sm transition-all ${day.completed ? 'text-gray-400 line-through decoration-gray-300' : 'text-gray-800'}`}>
+                                        {day.title}
+                                    </span>
+                                    {day.completed && (
+                                        <LucideCheckCircle size={14} className="text-green-500" />
+                                    )}
+                                </div>
+
+                                {!day.isRest && day.description && (
+                                    <div className="text-xs text-slate-500 mb-1 whitespace-pre-wrap leading-snug">
+                                        {day.description}
+                                    </div>
+                                )}
+
+                                {!day.isRest && (
+                                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                                        <span className="flex items-center gap-1">
+                                            <LucideFootprints size={12} className="text-slate-400"/>
+                                            {day.distance}km
+                                        </span>
+                                        {paceInfo && (
+                                            <span className="flex items-center gap-1">
+                                                <LucideTimer size={12} className="text-slate-400"/>
+                                                {paceInfo.time}/km
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            
+                                {day.feedback && (
+                                    <div className="mt-1 animate-in fade-in slide-in-from-left-2 duration-300">
+                                        <span className="text-[10px] bg-white border border-gray-100 px-1.5 py-0.5 rounded-md inline-flex items-center gap-1 w-fit text-gray-500 shadow-sm">
+                                            <span>난이도: {getFeedbackEmoji()}</span>
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                            <span className={`text-xs font-mono whitespace-nowrap ${isToday ? 'text-blue-600 font-bold' : 'text-gray-400'}`}>
+                                {day.date}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ScheduleView = ({ plan, onToggle, onUpdateDay, onAdjustPlan }) => {
+            const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
+            const [selectedDay, setSelectedDay] = useState(null);
+            const today = formatDate(new Date());
+
+            if (!plan || plan.length === 0) return <div className="text-center p-10 text-gray-400">일정이 생성되지 않았습니다.</div>;
+
+            const currentWeek = plan[currentWeekIndex];
+            const totalWeeks = plan.length;
+
+            const handlePrev = () => {
+                if (currentWeekIndex > 0) setCurrentWeekIndex(prev => prev - 1);
+            };
+
+            const handleNext = () => {
+                if (currentWeekIndex < totalWeeks - 1) setCurrentWeekIndex(prev => prev + 1);
+            };
+
+            return (
+                <div className="px-4 pb-20">
+                    <div className="flex justify-between items-center mb-6 px-2 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 sticky top-0 z-20">
+                        <button 
+                            onClick={handlePrev}
+                            disabled={currentWeekIndex === 0}
+                            className={`p-2 rounded-full transition-all ${
+                                currentWeekIndex === 0 
+                                ? 'text-gray-300 cursor-not-allowed' 
+                                : 'text-gray-600 hover:bg-gray-100 active:bg-gray-200'
                             }`}
                         >
-                            {day.completed && day.feedback === selectedFeedback ? (
-                                <>
-                                    <LucideCheckCircle size={18} /> 저장됨
-                                </>
-                            ) : (
-                                <>
-                                    <LucideSave size={18} /> 저장하기
-                                </>
-                            )}
+                            <LucideChevronLeft size={24} />
+                        </button>
+                        
+                        <div className="text-center">
+                            <h3 className="font-bold text-xl text-gray-800">Week {currentWeek.weekNumber}</h3>
+                            <div className="text-xs text-gray-400 font-medium mt-1">
+                                {currentWeek.days[0].date} ~ {currentWeek.days[6].date}
+                            </div>
+                        </div>
+
+                        <button 
+                            onClick={handleNext}
+                            disabled={currentWeekIndex === totalWeeks - 1}
+                            className={`p-2 rounded-full transition-all ${
+                                currentWeekIndex === totalWeeks - 1 
+                                ? 'text-gray-300 cursor-not-allowed' 
+                                : 'text-gray-600 hover:bg-gray-100 active:bg-gray-200'
+                            }`}
+                        >
+                            <LucideChevronRight size={24} />
                         </button>
                     </div>
 
-                    <div className="h-px bg-gray-100"></div>
-
-                    <div>
-                        <h3 className="text-gray-800 font-bold mb-2 flex items-center gap-2 text-sm uppercase tracking-wider">
-                            <LucideRefreshCw size={16} className="text-blue-500" />
-                            훈련 변경하기
-                        </h3>
-                        <p className="text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded-lg">
-                            컨디션이 좋지 않다면, 무리하지 말고 강도가 낮은 훈련이나 휴식을 선택하세요.
-                        </p>
-                        
-                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1 scrollbar-hide">
-                            {Object.entries(PACES)
-                                .sort(([,a], [,b]) => a.intensity - b.intensity)
-                                .map(([key, pace]) => (
-                                <button
-                                    key={key}
-                                    onClick={() => handleReplaceWorkout(key)}
-                                    className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-all group text-left"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex flex-col gap-0.5">
-                                            {[...Array(3)].map((_, i) => (
-                                                <div 
-                                                    key={i} 
-                                                    className={`w-1 h-1 rounded-full ${
-                                                        i < Math.ceil(pace.intensity / 2) 
-                                                        ? 'bg-blue-400' 
-                                                        : 'bg-gray-200'
-                                                    }`}
-                                                />
-                                            ))}
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-sm text-gray-700 group-hover:text-blue-700">{pace.label}</div>
-                                            <div className="text-[11px] text-gray-400">{pace.desc}</div>
-                                        </div>
-                                    </div>
-                                    <div className="text-xs font-mono text-gray-500 group-hover:text-blue-600 bg-gray-50 group-hover:bg-white px-2 py-1 rounded">
-                                        {pace.time}/km
-                                    </div>
-                                </button>
-                            ))}
-                             <button
-                                onClick={handleRest}
-                                className="w-full flex items-center justify-center p-3 rounded-xl border border-dashed border-gray-300 hover:bg-gray-50 text-gray-500 font-medium text-sm mt-3 gap-2"
-                            >
-                                <span>☕</span> 오늘은 휴식하기
-                            </button>
-                        </div>
+                    <div className="space-y-3 min-h-[400px]">
+                        {currentWeek.days.map(day => (
+                            <ScheduleItem 
+                                key={day.id} 
+                                day={day} 
+                                onToggle={onToggle}
+                                onClick={setSelectedDay}
+                                isToday={day.date === today}
+                            />
+                        ))}
                     </div>
-                </div>
-            </div>
-        </div>
-    );
-};
 
-const ScheduleItem = ({ day, onToggle, onClick, isToday }) => {
-    const getFeedbackEmoji = () => {
-        if (!day.feedback) return null;
-        return FEEDBACK_LEVELS.find(f => f.value === day.feedback)?.emoji;
-    };
-
-    const paceInfo = PACES[day.type];
-
-    return (
-        <div 
-            onClick={() => onClick(day)}
-            className={`relative flex items-center p-4 mb-2 rounded-xl border transition-all cursor-pointer group select-none active:scale-[0.98] ${
-                isToday 
-                ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/20 z-10 shadow-md' 
-                : (day.completed ? 'bg-green-50/30 border-green-100' : 'bg-white border-gray-100 hover:border-gray-300 shadow-sm')
-            }`}
-        >
-            {isToday && (
-                <div className="absolute -top-2.5 left-3 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
-                    <span>🔥</span> Today
-                </div>
-            )}
-
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 text-sm font-bold transition-colors ${
-                isToday 
-                ? 'bg-blue-600 text-white shadow-blue-200 shadow-lg' 
-                : (day.isRest ? 'bg-gray-100 text-gray-400' : 'bg-blue-50 text-blue-600')
-            }`}>
-                {getDayName(day.date)}
-            </div>
-            
-            <div className="flex-1">
-                <div className="flex justify-between items-start">
-                    <div className="flex flex-col gap-1 w-full">
-                        <div className="flex items-center gap-2">
-                             <span className={`font-bold text-sm transition-all ${day.completed ? 'text-gray-400 line-through decoration-gray-300' : 'text-gray-800'}`}>
-                                {day.title}
-                            </span>
-                            {day.completed && (
-                                <LucideCheckCircle size={14} className="text-green-500" />
-                            )}
-                        </div>
-
-                        {!day.isRest && day.description && (
-                            <div className="text-xs text-slate-500 mb-1 whitespace-pre-wrap leading-snug">
-                                {day.description}
-                            </div>
-                        )}
-
-                        {!day.isRest && (
-                            <div className="flex items-center gap-3 text-xs text-gray-500">
-                                <span className="flex items-center gap-1">
-                                    <LucideFootprints size={12} className="text-slate-400"/>
-                                    {day.distance}km
-                                </span>
-                                {paceInfo && (
-                                    <span className="flex items-center gap-1">
-                                        <LucideTimer size={12} className="text-slate-400"/>
-                                        {paceInfo.time}/km
-                                    </span>
-                                )}
-                            </div>
-                        )}
-                       
-                        {day.feedback && (
-                            <div className="mt-1 animate-in fade-in slide-in-from-left-2 duration-300">
-                                <span className="text-[10px] bg-white border border-gray-100 px-1.5 py-0.5 rounded-md inline-flex items-center gap-1 w-fit text-gray-500 shadow-sm">
-                                    <span>난이도: {getFeedbackEmoji()}</span>
-                                </span>
-                            </div>
-                        )}
+                    <div className="flex justify-center gap-1.5 mt-6 flex-wrap px-8">
+                        {plan.map((_, idx) => (
+                            <div 
+                                key={idx} 
+                                className={`h-1.5 rounded-full transition-all duration-300 ${
+                                    idx === currentWeekIndex ? 'w-4 bg-slate-700' : 'w-1.5 bg-gray-300'
+                                }`}
+                            />
+                        ))}
                     </div>
-                    <span className={`text-xs font-mono whitespace-nowrap ${isToday ? 'text-blue-600 font-bold' : 'text-gray-400'}`}>
-                        {day.date}
-                    </span>
+
+                    <WorkoutDetailModal 
+                        day={selectedDay} 
+                        isOpen={!!selectedDay} 
+                        onClose={() => setSelectedDay(null)}
+                        onUpdate={onUpdateDay}
+                        onAdjustPlan={onAdjustPlan}
+                    />
                 </div>
-            </div>
-        </div>
-    );
-};
+            );
+        };
 
-const ScheduleView = ({ plan, onToggle, onUpdateDay, onAdjustPlan }) => {
-    const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
-    const [selectedDay, setSelectedDay] = useState(null);
-    const today = formatDate(new Date());
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('요약');
+            const [plan, setPlan] = useState(null);
+            const [userData, setUserData] = useState(null);
+            const [adjustmentList, setAdjustmentList] = useState(null);
+            const [isOnboarding, setIsOnboarding] = useState(true);
 
-    if (!plan || plan.length === 0) return <div className="text-center p-10 text-gray-400">일정이 생성되지 않았습니다.</div>;
-
-    const currentWeek = plan[currentWeekIndex];
-    const totalWeeks = plan.length;
-
-    const handlePrev = () => {
-        if (currentWeekIndex > 0) setCurrentWeekIndex(prev => prev - 1);
-    };
-
-    const handleNext = () => {
-        if (currentWeekIndex < totalWeeks - 1) setCurrentWeekIndex(prev => prev + 1);
-    };
-
-    return (
-        <div className="px-4 pb-20">
-            <div className="flex justify-between items-center mb-6 px-2 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 sticky top-0 z-20">
-                <button 
-                    onClick={handlePrev}
-                    disabled={currentWeekIndex === 0}
-                    className={`p-2 rounded-full transition-all ${
-                        currentWeekIndex === 0 
-                        ? 'text-gray-300 cursor-not-allowed' 
-                        : 'text-gray-600 hover:bg-gray-100 active:bg-gray-200'
-                    }`}
-                >
-                    <LucideChevronLeft size={24} />
-                </button>
+            useEffect(() => {
+                const savedPlan = localStorage.getItem('aimatr_plan');
+                const savedUser = localStorage.getItem('aimatr_user');
                 
-                <div className="text-center">
-                    <h3 className="font-bold text-xl text-gray-800">Week {currentWeek.weekNumber}</h3>
-                    <div className="text-xs text-gray-400 font-medium mt-1">
-                        {currentWeek.days[0].date} ~ {currentWeek.days[6].date}
-                    </div>
-                </div>
-
-                <button 
-                    onClick={handleNext}
-                    disabled={currentWeekIndex === totalWeeks - 1}
-                    className={`p-2 rounded-full transition-all ${
-                        currentWeekIndex === totalWeeks - 1 
-                        ? 'text-gray-300 cursor-not-allowed' 
-                        : 'text-gray-600 hover:bg-gray-100 active:bg-gray-200'
-                    }`}
-                >
-                    <LucideChevronRight size={24} />
-                </button>
-            </div>
-
-            <div className="space-y-3 min-h-[400px]">
-                {currentWeek.days.map(day => (
-                    <ScheduleItem 
-                        key={day.id} 
-                        day={day} 
-                        onToggle={onToggle}
-                        onClick={setSelectedDay}
-                        isToday={day.date === today}
-                    />
-                ))}
-            </div>
-
-            <div className="flex justify-center gap-1.5 mt-6 flex-wrap px-8">
-                {plan.map((_, idx) => (
-                    <div 
-                        key={idx} 
-                        className={`h-1.5 rounded-full transition-all duration-300 ${
-                            idx === currentWeekIndex ? 'w-4 bg-slate-700' : 'w-1.5 bg-gray-300'
-                        }`}
-                    />
-                ))}
-            </div>
-
-            <WorkoutDetailModal 
-                day={selectedDay} 
-                isOpen={!!selectedDay} 
-                onClose={() => setSelectedDay(null)}
-                onUpdate={onUpdateDay}
-                onAdjustPlan={onAdjustPlan}
-            />
-        </div>
-    );
-};
-
-// --- Main App ---
-
-export default function App() {
-    const [activeTab, setActiveTab] = useState('요약');
-    const [plan, setPlan] = useState(null);
-    const [userData, setUserData] = useState(null);
-    const [adjustmentList, setAdjustmentList] = useState(null);
-    const [isOnboarding, setIsOnboarding] = useState(true);
-
-    useEffect(() => {
-        const savedPlan = localStorage.getItem('aimatr_plan');
-        const savedUser = localStorage.getItem('aimatr_user');
-        
-        if (savedPlan && savedUser) {
-            setPlan(JSON.parse(savedPlan));
-            setUserData(JSON.parse(savedUser));
-            setIsOnboarding(false);
-        } else {
-            setIsOnboarding(true);
-        }
-    }, []);
-
-    const handleOnboardingComplete = (data) => {
-        const todayStr = formatDate(new Date());
-        const newPlan = generatePlan(todayStr, data.level, data.recommendedWeeks);
-        setPlan(newPlan);
-        setUserData(data);
-        localStorage.setItem('aimatr_plan', JSON.stringify(newPlan));
-        localStorage.setItem('aimatr_user', JSON.stringify(data));
-        setIsOnboarding(false);
-    };
-
-    const handleToggle = (dayId) => {
-        const newPlan = plan.map(week => ({
-            ...week,
-            days: week.days.map(day => 
-                day.id === dayId ? { ...day, completed: !day.completed } : day
-            )
-        }));
-        setPlan(newPlan);
-        localStorage.setItem('aimatr_plan', JSON.stringify(newPlan));
-    };
-
-    const handleUpdateDay = (dayId, updates) => {
-        const newPlan = plan.map(week => ({
-            ...week,
-            days: week.days.map(day => 
-                day.id === dayId ? { ...day, ...updates } : day
-            )
-        }));
-        setPlan(newPlan);
-        localStorage.setItem('aimatr_plan', JSON.stringify(newPlan));
-    };
-
-    const handleAdjustPlan = (currentDayId) => {
-        if (!plan) return;
-
-        let foundCurrent = false;
-        const changes = [];
-        const newPlan = plan.map(week => ({
-            ...week,
-            days: week.days.map(day => {
-                if (day.id === currentDayId) {
-                    foundCurrent = true;
-                    return day;
+                if (savedPlan && savedUser) {
+                    setPlan(JSON.parse(savedPlan));
+                    setUserData(JSON.parse(savedUser));
+                    setIsOnboarding(false);
+                } else {
+                    setIsOnboarding(true);
                 }
+            }, []);
 
-                if (foundCurrent && !day.completed && !day.isRest) {
-                    let newDistance = day.distance;
-                    let newDesc = day.description;
-                    let changeLog = '';
+            const handleOnboardingComplete = (data) => {
+                const todayStr = formatDate(new Date());
+                const newPlan = generatePlan(todayStr, data.level, data.recommendedWeeks);
+                setPlan(newPlan);
+                setUserData(data);
+                localStorage.setItem('aimatr_plan', JSON.stringify(newPlan));
+                localStorage.setItem('aimatr_user', JSON.stringify(data));
+                setIsOnboarding(false);
+            };
 
-                    if (day.type === 'easy') { // LSD
-                         const increased = Math.round(day.distance * 1.05 * 10) / 10;
-                         if (increased > day.distance) {
-                             changeLog = `${day.distance}km → ${increased}km`;
-                             newDistance = increased;
-                             newDesc = `${PACES.easy.time} 페이스로 ${newDistance}km 완주 (중간에 멈추지 않기)`;
-                         }
-                    } else if (day.type === 'interval') { // Interval
-                        const match = day.description.match(/x (\d+)세트/);
-                        if (match) {
-                            const currentSets = parseInt(match[1]);
-                            const newSets = currentSets + 1;
-                            changeLog = `${currentSets}세트 → ${newSets}세트`;
-                            newDesc = day.description.replace(`x ${currentSets}세트`, `x ${newSets}세트`);
-                            newDistance = Math.round((day.distance + 0.6) * 10) / 10;
+            const handleToggle = (dayId) => {
+                const newPlan = plan.map(week => ({
+                    ...week,
+                    days: week.days.map(day => 
+                        day.id === dayId ? { ...day, completed: !day.completed } : day
+                    )
+                }));
+                setPlan(newPlan);
+                localStorage.setItem('aimatr_plan', JSON.stringify(newPlan));
+            };
+
+            const handleUpdateDay = (dayId, updates) => {
+                const newPlan = plan.map(week => ({
+                    ...week,
+                    days: week.days.map(day => 
+                        day.id === dayId ? { ...day, ...updates } : day
+                    )
+                }));
+                setPlan(newPlan);
+                localStorage.setItem('aimatr_plan', JSON.stringify(newPlan));
+            };
+
+            const handleAdjustPlan = (currentDayId) => {
+                if (!plan) return;
+
+                let foundCurrent = false;
+                const changes = [];
+                const newPlan = plan.map(week => ({
+                    ...week,
+                    days: week.days.map(day => {
+                        if (day.id === currentDayId) {
+                            foundCurrent = true;
+                            return day;
                         }
-                    } else if (day.type === 'threshold') { // Tempo
-                        newDistance = Math.round((day.distance + 1) * 10) / 10;
-                        changeLog = `${day.distance}km → ${newDistance}km`;
-                        const tempoDist = Math.max(newDistance - 3, 1);
-                         newDesc = `웜업 2k + ${tempoDist}km 지속주 (@${PACES.threshold.time}) + 쿨다운`;
-                    }
 
-                    if (changeLog) {
-                        changes.push({
-                            date: day.date,
-                            title: day.title,
-                            change: changeLog
-                        });
-                        return { ...day, distance: newDistance, description: newDesc };
-                    }
+                        if (foundCurrent && !day.completed && !day.isRest) {
+                            let newDistance = day.distance;
+                            let newDesc = day.description;
+                            let changeLog = '';
+
+                            if (day.type === 'easy') { 
+                                const increased = Math.round(day.distance * 1.05 * 10) / 10;
+                                if (increased > day.distance) {
+                                    changeLog = `${day.distance}km → ${increased}km`;
+                                    newDistance = increased;
+                                    newDesc = `${PACES.easy.time} 페이스로 ${newDistance}km 완주 (중간에 멈추지 않기)`;
+                                }
+                            } else if (day.type === 'interval') { 
+                                const match = day.description.match(/x (\d+)세트/);
+                                if (match) {
+                                    const currentSets = parseInt(match[1]);
+                                    const newSets = currentSets + 1;
+                                    changeLog = `${currentSets}세트 → ${newSets}세트`;
+                                    newDesc = day.description.replace(`x ${currentSets}세트`, `x ${newSets}세트`);
+                                    newDistance = Math.round((day.distance + 0.6) * 10) / 10;
+                                }
+                            } else if (day.type === 'threshold') { 
+                                newDistance = Math.round((day.distance + 1) * 10) / 10;
+                                changeLog = `${day.distance}km → ${newDistance}km`;
+                                const tempoDist = Math.max(newDistance - 3, 1);
+                                newDesc = `웜업 2k + ${tempoDist}km 지속주 (@${PACES.threshold.time}) + 쿨다운`;
+                            }
+
+                            if (changeLog) {
+                                changes.push({
+                                    date: day.date,
+                                    title: day.title,
+                                    change: changeLog
+                                });
+                                return { ...day, distance: newDistance, description: newDesc };
+                            }
+                        }
+                        return day;
+                    })
+                }));
+
+                setPlan(newPlan);
+                localStorage.setItem('aimatr_plan', JSON.stringify(newPlan));
+                if (changes.length > 0) setAdjustmentList(changes);
+            };
+
+            const handleStart = () => setActiveTab('스케줄');
+
+            const handleGoHome = () => {
+                setIsOnboarding(true);
+            };
+
+            const handleResetData = () => {
+                if(window.confirm("정말로 모든 훈련 데이터를 삭제하고 초기화하시겠습니까?")) {
+                    localStorage.removeItem('aimatr_plan');
+                    localStorage.removeItem('aimatr_user');
+                    setPlan(null);
+                    setUserData(null);
+                    setIsOnboarding(true);
+                    setActiveTab('요약');
                 }
-                return day;
-            })
-        }));
+            }
 
-        setPlan(newPlan);
-        localStorage.setItem('aimatr_plan', JSON.stringify(newPlan));
-        if (changes.length > 0) setAdjustmentList(changes);
-    };
+            const handleDownloadData = () => {
+                const planData = localStorage.getItem('aimatr_plan');
+                if (!planData) {
+                    alert("내보낼 데이터가 없습니다.");
+                    return;
+                }
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(planData);
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "aimatr_training_plan.json");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+            };
 
-    const handleStart = () => setActiveTab('스케줄');
-
-    // New: Just go back to onboarding input without clearing data
-    const handleGoHome = () => {
-        setIsOnboarding(true);
-    };
-
-    // Renamed: Explicit data reset
-    const handleResetData = () => {
-        if(confirm("모든 훈련 데이터를 삭제하고 초기화하시겠습니까?")) {
-            localStorage.removeItem('aimatr_plan');
-            localStorage.removeItem('aimatr_user');
-            setPlan(null);
-            setUserData(null);
-            setIsOnboarding(true);
-            setActiveTab('요약');
-        }
-    }
-
-    return (
-        <div className="min-h-screen bg-[#E5E5E5] flex justify-center items-start pt-0 md:pt-10">
-            <div className="w-full max-w-md bg-[#F3F4F6] min-h-screen md:min-h-[800px] md:h-auto md:rounded-[30px] shadow-2xl overflow-hidden flex flex-col font-sans relative">
-                
-                {isOnboarding ? (
-                    <OnboardingView onComplete={handleOnboardingComplete} initialData={userData} />
-                ) : (
-                    <>
-                        <div className="pt-4 pb-2">
-                            <Header onGoHome={handleGoHome} />
-                            <TabNav activeTab={activeTab} onTabChange={setActiveTab} />
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto scrollbar-hide">
-                            {activeTab === '요약' && <SummaryView onStart={handleStart} userData={userData} />}
-                            {activeTab === '스케줄' && (
-                                <ScheduleView 
-                                    plan={plan} 
-                                    onToggle={handleToggle} 
-                                    onUpdateDay={handleUpdateDay}
-                                    onAdjustPlan={handleAdjustPlan}
-                                />
-                            )}
-                            {activeTab === '데이터' && (
-                                <div className="px-4 py-6 text-center">
-                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-4">
-                                        <LucideActivity className="mx-auto text-blue-500 mb-2" size={32} />
-                                        <h3 className="font-bold text-gray-800">누적 데이터</h3>
-                                        <p className="text-gray-500 text-sm mt-1">훈련이 진행됨에 따라 통계가 표시됩니다.</p>
-                                    </div>
-                                    <button onClick={handleResetData} className="text-red-400 text-sm flex items-center justify-center gap-1 mx-auto hover:text-red-500">
-                                        <LucideTrash2 size={14} /> 데이터 전체 초기화
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+            return (
+                <div className="min-h-screen bg-[#E5E5E5] flex justify-center items-start pt-0 md:pt-10">
+                    <div className="w-full max-w-md bg-[#F3F4F6] min-h-screen md:min-h-[800px] md:h-auto md:rounded-[30px] shadow-2xl overflow-hidden flex flex-col font-sans relative">
                         
-                        <AdjustmentModal 
-                            adjustments={adjustmentList} 
-                            onClose={() => setAdjustmentList(null)} 
-                        />
-                    </>
-                )}
-            </div>
-        </div>
-    );
-}
+                        {isOnboarding ? (
+                            <OnboardingView onComplete={handleOnboardingComplete} initialData={userData} />
+                        ) : (
+                            <>
+                                <div className="pt-4 pb-2">
+                                    <Header onGoHome={handleGoHome} />
+                                    <TabNav activeTab={activeTab} onTabChange={setActiveTab} />
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto scrollbar-hide">
+                                    {activeTab === '요약' && <SummaryView onStart={handleStart} userData={userData} />}
+                                    {activeTab === '스케줄' && (
+                                        <ScheduleView 
+                                            plan={plan} 
+                                            onToggle={handleToggle} 
+                                            onUpdateDay={handleUpdateDay}
+                                            onAdjustPlan={handleAdjustPlan}
+                                        />
+                                    )}
+                                    {activeTab === '데이터' && (
+                                        <div className="px-4 py-6 text-center">
+                                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-4">
+                                                <LucideActivity className="mx-auto text-blue-500 mb-2" size={32} />
+                                                <h3 className="font-bold text-gray-800">누적 데이터</h3>
+                                                <p className="text-gray-500 text-sm mt-1">훈련이 진행됨에 따라 통계가 표시됩니다.</p>
+                                            </div>
+                                            <div className="flex gap-2 justify-center">
+                                                <button onClick={handleDownloadData} className="text-blue-500 text-sm flex items-center justify-center gap-1 hover:text-blue-700 font-medium py-2 px-4 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
+                                                    <LucideDownload size={14} /> 데이터 내보내기
+                                                </button>
+                                                <button onClick={handleResetData} className="text-red-400 text-sm flex items-center justify-center gap-1 hover:text-red-500 font-medium py-2 px-4 rounded-lg bg-red-50 hover:bg-red-100 transition-colors">
+                                                    <LucideTrash2 size={14} /> 초기화
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <AdjustmentModal 
+                                    adjustments={adjustmentList} 
+                                    onClose={() => setAdjustmentList(null)} 
+                                />
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
